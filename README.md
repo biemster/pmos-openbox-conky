@@ -1,5 +1,6 @@
 # postmarketOS UI based on openbox, with conky
-![UI](http://github.com/biemster/pmos-openbox-conky/blob/main/screenshot.png?raw=true "UI") ![UI with notification](http://github.com/biemster/pmos-openbox-conky/blob/main/screenshot.png?raw=true "UI with notification")
+<img src="https://github.com/biemster/pmos-openbox-conky/blob/main/screenshot.png" width=250> <img src="https://github.com/biemster/pmos-openbox-conky/blob/main/screenshot2.png" width=250>
+
 This repo is a collection of random scripts and configs to get a basic UI for postmarketOS.
 It shares the simplicity and low levelness of `sxmo`, but way better because `conky`!
 Development is done on a OnePlus 6T in the `edge` release, so a couple things will only work there but should
