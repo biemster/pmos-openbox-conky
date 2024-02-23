@@ -1,0 +1,22 @@
+#.config/openbox/autostart
+
+# init UI state machine
+echo "full;nocall" > /tmp/ui_statemachine
+
+# display off in 10s
+xset dpms 10 10 10
+
+# conkies
+/usr/bin/conky -c $HOME/conkies/topbar_left.conkyrc &
+/usr/bin/conky -c $HOME/conkies/topbar_right.conkyrc &
+/usr/bin/conky -c $HOME/conkies/status_left.conkyrc &
+/usr/bin/conky -c $HOME/conkies/status_right.conkyrc &
+/usr/bin/conky -c $HOME/conkies/call.conkyrc &
+/usr/bin/conky -c $HOME/conkies/swipe_unlock.conkyrc &
+#/usr/bin/conky -c $HOME/conkies/bottom_left.conkyrc &
+#/usr/bin/conky -c $HOME/conkies/bottom_right.conkyrc &
+
+# gesture recognition
+lisgd -d /dev/input/event4 \
+	-g "1,LR,*,*,R,dunstify 'swiped -->'" \
+	-g "1,RL,*,*,R,dunstify 'swiped <--'" &

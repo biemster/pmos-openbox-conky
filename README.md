@@ -21,6 +21,10 @@ vim,conky,python3,py3-evdev,py3-evdev-pyc,modemmanager,iw,feh,lisgd,tcpdump,libc
 
 ## Basic UI, notifications and gestures
 The conkyrc scripts provide a basic UI, with input gestures provided by `lisgd`.
+It is made dynamic by a small state machine that lives in
+```
+/tmp/ui_statemachine
+```
 Notifications are done using `dunst`, with the supplied `dunstrc` which should go to `.config/dunst/dunstrc`
 The `autostart` script is for openbox, and should be copied to `$HOME/.config/openbox/autostart`
 

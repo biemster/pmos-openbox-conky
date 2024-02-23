@@ -1,0 +1,90 @@
+conky.config = {
+
+	own_window = true,
+	own_window_type = 'desktop',
+	own_window_transparent = true,
+	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    
+	alignment = 'top_left',
+	gap_x = 3,
+	gap_y = 100,
+	minimum_width = '200',
+
+	use_xft = true,
+	font = 'Ubuntu:size=18',
+	xftalpha = 1,
+	override_utf8_locale = true,
+    
+    
+	draw_shades = false,
+	default_shade_color = '#222222',
+	draw_outline = false,
+	default_outline_color = '#222222',
+    
+	default_color = '#50fafa',
+	color0 = '#8c8774',
+	color1 = '#827d6a',
+	color2 = '#f4a100',
+	cpu_avg_samples = 2,
+	
+
+	draw_borders = false,
+	stippled_borders = 0,
+	border_inner_margin = 8,
+	border_outer_margin = 8,
+	border_width = 1,
+	draw_graph_borders = true,
+
+	background = true,
+	no_buffers = true,
+	imlib_cache_size = 0,
+	short_units = true,
+	double_buffer = true,
+	update_interval = 1,
+
+	template0 = [[qmapmux0.0]]
+};
+
+conky.text = [[
+${if_existing /tmp/ui_statemachine full}\
+${color}CPU$alignr$cpu%
+${voffset -2}$color2${cpubar cpu1 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu2 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu3 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu4 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu5 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu6 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu7 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu8 10,500 -l -t}${voffset -2}
+${goto 18}$font$color0${top name 1}${alignr}$color${top cpu 1}%
+${goto 18}$color0${top name 2}$alignr$color${top cpu 2}%
+${goto 18}$color0${top name 3}$alignr$color${top cpu 3}%
+#
+${voffset 8}${goto 18}${color}RAM${alignr}$legacymem / $memmax
+${voffset -2}$color2$alignr${membar 10,500 -l -t}${voffset -2}
+${goto 18}$color0${top_mem name 1}$alignr$color${top_mem mem_res 1}
+${goto 18}$color0${top_mem name 2}$alignr$color${top_mem mem_res 2}
+${goto 18}$color0${top_mem name 3}$alignr$color${top_mem mem_res 3}
+#
+${voffset 8}${goto 18}${color}DISK${alignr}$fs_used / $fs_size
+${voffset -2}$color2$alignr${fs_bar 10,500}${voffset -2}
+#
+${voffset 8}${goto 18}${color}BATTERY${alignr}${battery_percent bq27411-0}%
+${voffset -2}$color2$alignr${battery_bar 10,500 bq27411-0}${voffset -2}
+#
+${voffset 8}${goto 18}${color}GPS${alignr}acc: Xm
+${voffset -2}$color2$alignr${execbar 10,500 }${voffset -2}
+${goto 18}${color0}${alignr}lat${color}42 ${color0}lon${color}53 ${color0}view${color}7 ${color0}fix${color}4
+#
+${voffset 8}${goto 18}${color}NETWORK
+${color}Device ${alignr}${color0}$template0
+${color}IP ${alignr}${color0}${addr $template0}
+#${color}Public IP ${alignr}${color0}${texeci 300 curl checkip.amazonaws.com}
+#${color}Ping 1.1.1.1 ${alignr}${color0}${texeci 3 ping -c1 -W1 1.1.1.1 | grep -o 'time=.*' | cut -c6-}
+${color}Download $color0${downspeed $template0} ${alignr}${color0}${upspeed $template0}${color} Upload
+#${color2}${downspeedgraph $template0 50,220 -t} ${alignr} ${upspeedgraph $template0 50,220 -t}
+${color}Total Down ${color0}${totaldown $template0} ${alignr}${color0}${totalup $template0}${color} Total Up
+${color0}${hr}
+#${texeci 3 netstat -ept | grep ESTAB | awk '{print $9}' | cut -d/ -f2 | sort | uniq -c | sort -nr}
+${endif}
+]];

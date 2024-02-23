@@ -1,0 +1,48 @@
+conky.config = {
+
+	own_window = true,
+	own_window_type = 'desktop',
+	own_window_transparent = true,
+	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    
+	alignment = 'top_left',
+	gap_x = 50,
+	gap_y = 3,
+	minimum_width = '200',
+
+	use_xft = true,
+	font = 'Ubuntu:size=40',
+	xftalpha = 1,
+	override_utf8_locale = true,
+    
+    
+	draw_shades = false,
+	default_shade_color = '#222222',
+	draw_outline = false,
+	default_outline_color = '#222222',
+    
+	default_color = '#50fafa',
+	color0 = '#8c8774',
+	color1 = '#827d6a',
+	color2 = '#f4a100',
+	cpu_avg_samples = 2,
+	
+
+	draw_borders = false,
+	stippled_borders = 0,
+	border_inner_margin = 8,
+	border_outer_margin = 8,
+	border_width = 1,
+	draw_graph_borders = true,
+
+	background = true,
+	no_buffers = true,
+	imlib_cache_size = 0,
+	short_units = true,
+	double_buffer = true,
+	update_interval = 1,
+};
+
+conky.text = [[
+${color0}🐱 🐱 🐱 🐱 🐱
+]];
