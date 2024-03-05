@@ -18,5 +18,10 @@ xset dpms 10 10 10
 
 # gesture recognition
 lisgd -d /dev/input/event4 \
-	-g "1,LR,*,*,R,dunstify 'swiped -->'" \
-	-g "1,RL,*,*,R,dunstify 'swiped <--'" &
+	-g "1,LR,*,*,R,$HOME/phone.py -r" \
+	-g "1,RL,*,*,R,$HOME/phone.py -l" \
+	-g "1,DU,*,*,R,$HOME/phone.py -u" \
+	-g "1,UD,*,*,R,$HOME/phone.py -d" &
+
+# controller
+$HOME/phone.py -e > /tmp/phone_ctrl.log &
