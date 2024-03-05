@@ -12,6 +12,7 @@ vim,conky,python3,py3-evdev,py3-evdev-pyc,modemmanager,iw,feh,lisgd,tcpdump,libc
 
 ## Targets
 - [x] Basic UI
+- [ ] Basic apps (Dialer, SMS, maps, web, etc)
 - [x] Notifications
 - [ ] Calls
 - [x] Mobile data
@@ -22,11 +23,18 @@ vim,conky,python3,py3-evdev,py3-evdev-pyc,modemmanager,iw,feh,lisgd,tcpdump,libc
 - [ ] Power management
 
 ## Basic UI, notifications and gestures
-The conkyrc scripts provide a basic UI, with input gestures provided by `lisgd`.
+The python script `phone.py` runs the show, and takes care of everything from `/dev/input` besides the gestures.
+So the power button, volume control, tri-state thingy (on OP6), rumble and sensors (light,accelerometer,compass,proximity).
+
+The conkyrc scripts provide a basic home screen, with input gestures provided by `lisgd`.
 It is made dynamic by a small state machine that lives in
 ```
 /tmp/ui_statemachine
 ```
+
+Basic apps will be built as web apps, to provide easy testing on a remote machine. The webbrowser intended for this
+will probably be `Servo` (https://servo.org), which will be launched using a swipe-right (or -left?) on the home screen.
+
 Notifications are done using `dunst`, with the supplied `dunstrc` which should go to `$HOME/.config/dunst/dunstrc`
 The `autostart` script is for openbox, and should be copied to `$HOME/.config/openbox/autostart`
 
@@ -68,10 +76,16 @@ $ mmcli -m 0 --location-inject-assistance-data=/path/to/downloaded/file
 $ mmcli -m 0 --location-get
 ```
 
-## WhatsApp, iMessage
+## SMS, WhatsApp, iMessage
 WhatsApp will be connected through `whatsmeow`, iMessage when `pypush` works again.
+They will be set up to write new messages to a separate SQLite database, from which `phone.py` pulls the latest entries.
+Support for sending messages will be provided by a web app.
 
 ## Power management
+https://wiki.postmarketos.org/wiki/Runtime_Power_Management
+
+https://wiki.postmarketos.org/wiki/Opportunistic_Sleep
+
 ```bash
 $ ls /sys/class/power_supply/*
 $ cat /sys/class/power_supply/bq27411-0/capacity
