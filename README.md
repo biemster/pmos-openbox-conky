@@ -21,6 +21,7 @@ vim,conky,python3,py3-evdev,py3-evdev-pyc,modemmanager,iw,feh,lisgd,tcpdump,libc
 - [ ] GPS
 - [ ] WhatsApp, iMessage
 - [ ] Power management
+- [ ] Access to internal home network
 
 ## Basic UI, notifications and gestures
 The python script `phone.py` runs the show, and takes care of everything from `/dev/input` besides the gestures.
@@ -95,3 +96,11 @@ $ cat /sys/class/power_supply/bq27411-0/charge_now
 $ cat /sys/class/power_supply/pmi8998-charger/status 
 $ cat /sys/class/power_supply/pmi8998-charger/current_now
 ```
+
+## Access to internal home network
+- wireguard: https://gist.github.com/insdavm/b1034635ab23b8839bf957aa406b5e39
+- sish: https://docs.ssi.sh/
+
+## Wishlist
+- Camera: https://gitlab.com/sdm845-mainline/linux/-/issues/21
+- NFC: https://gitlab.com/sdm845-mainline/linux/-/merge_requests/62
