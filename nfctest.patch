@@ -1,0 +1,203 @@
+diff --git a/Makefile b/Makefile
+index 7e6b2e3..b8e370c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -8,7 +8,7 @@ CFILES_SPI= tml_alt-spi.c
+ 
+ INCLUDES= -I/usr/include/ -I./
+ 
+-LIBS=
++LIBS= -lnfc_nci_linux -lgpiod
+ 
+ CFLAGS=-Wall $(INCLUDES)
+ 
+diff --git a/tml_alt-i2c.c b/tml_alt-i2c.c
+index 7a781e0..2d82fe1 100644
+--- a/tml_alt-i2c.c
++++ b/tml_alt-i2c.c
+@@ -20,130 +20,102 @@
+ #include <sys/ioctl.h>
+ #include <linux/i2c-dev.h>
+ #include <linux/i2c.h>
++#include <gpiod.h>
+ #include <poll.h>
+ #include <tml.h>
+ 
+-#define I2C_BUS         "/dev/i2c-1"
++#define I2C_BUS         "/dev/i2c-3"
+ #define I2C_ADDRESS     0x28
+ 
+-#define PIN_INT         23
+-#define PIN_ENABLE      24
++#define GPIOCHIP        "gpiochip2"
++#define PIN_INT         63
++#define PIN_ENABLE      12
+ 
+ #define EDGE_NONE    0
+ #define EDGE_RISING  1
+ #define EDGE_FALLING 2
+ #define EDGE_BOTH    3
+ 
+-static int iEnableFd    = 0;
+-static int iInterruptFd = 0;
++static struct gpiod_chip *chip = {0};
++static struct gpiod_line *iEnableLine = {0};
++static struct gpiod_line *iInterruptLine = {0};
+ 
+ static int verifyPin( int pin, int isoutput, int edge ) {
+-    char buf[40];
+-    int hasGpio = 0;
+-
+-    sprintf( buf, "/sys/class/gpio/gpio%d", pin );
+-    int fd = open( buf, O_RDONLY );
+-    if ( fd <= 0 ) {
+-        // Pin not exported yet
+-        if ( ( fd = open( "/sys/class/gpio/export", O_WRONLY ) ) > 0 ) {
+-            sprintf(buf, "%d", pin);
+-            if ( write( fd, buf, strlen(buf)) == strlen(buf)) {
+-                hasGpio = 1;
+-            }
+-            close( fd );
+-        }
+-    } else {
+-        hasGpio = 1;
+-        close( fd );
++    // this function signature is not optimal, but kept to keep the patch small
++    if(isoutput) { // VEN
++        iEnableLine = gpiod_chip_get_line(chip, pin);
++        gpiod_line_request_output(iEnableLine, "nfc_VEN", 0);
+     }
+-    usleep(100000);
+-    if ( hasGpio ) {
+-        // Make sure it is an output
+-        sprintf( buf, "/sys/class/gpio/gpio%d/direction", pin );
+-        fd = open( buf, O_WRONLY );
+-        if ( fd > 0 ) {
+-            if ( isoutput ) {
+-                write(fd,"out",3);
+-                close(fd);
+-
+-                // Open pin and make sure it is off
+-                sprintf( buf, "/sys/class/gpio/gpio%d/value", pin );
+-                fd = open( buf, O_RDWR );
+-                if ( fd > 0 ) {
+-                    write( fd, "0", 1 );
+-                    return( fd );  // Success
+-                }
+-            } else {
+-                write(fd,"in",2);
+-                close(fd);
+-
+-                if(edge != EDGE_NONE) {
+-                    // Open pin edge control
+-                    sprintf( buf, "/sys/class/gpio/gpio%d/edge", pin );
+-                    fd = open( buf, O_RDWR );
+-                    if ( fd > 0 ) {
+-                        char * edge_str = "none";
+-                        switch ( edge ) {
+-                          case EDGE_RISING:  edge_str = "rising"; break;
+-                          case EDGE_FALLING: edge_str = "falling"; break;
+-                          case EDGE_BOTH:    edge_str = "both"; break;
+-                          default: break;
+-                        }
+-                        write( fd, edge_str, strlen(edge_str));
+-                        close(fd);
+-                    }
+-                }
+-                // Open pin
+-                sprintf( buf, "/sys/class/gpio/gpio%d/value", pin );
+-                fd = open( buf, O_RDONLY );
+-                if ( fd > 0 ) {
+-                    return( fd ); // Success
+-                }
+-            }
++    else {// IRQ
++        iInterruptLine = gpiod_chip_get_line(chip, pin);
++        switch(edge) {
++        case EDGE_RISING:
++            gpiod_line_request_rising_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        case EDGE_FALLING:
++            gpiod_line_request_falling_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        case EDGE_BOTH:
++            gpiod_line_request_rising_edge_events(iInterruptLine, "nfc_IRQ");
++            gpiod_line_request_falling_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        default:
++            gpiod_line_request_input(iInterruptLine, "nfc_IRQ");
++            break;
+         }
+     }
+-    return( 0 );
++    return 0;
+ }
+ 
+ static int pnGetint( void ) {
+-    char buf[2];
+-    int len;
+-    if (iInterruptFd <= 0) return -1;
+-    lseek(iInterruptFd, SEEK_SET, 0);
+-    len = read(iInterruptFd, buf, 2);
+-    if (len != 2) return 0;
+-    return (buf[0] != '0');
++    struct timespec ts = { 0, 300000000 };
++    struct gpiod_line_event event;
++    int ret;
++
++    ret = gpiod_line_event_wait(iInterruptLine, &ts);
++    if (ret < 0) {
++        printf("IRQ general failure\n");
++        ret = 0;
++    }
++    else if (ret == 0) {
++        printf("IRQ timeout\n");
++    }
++    else {
++        gpiod_line_event_read(iInterruptLine, &event);
++    }
++
++    return ret;
+ }
+ 
+ int tml_open(int * handle)
+ {
+-    iInterruptFd = verifyPin(PIN_INT, 0, EDGE_RISING);
+-    iEnableFd = verifyPin(PIN_ENABLE, 1, EDGE_NONE);
++    chip = gpiod_chip_open_by_name(GPIOCHIP);
++    verifyPin(PIN_INT, 0, EDGE_RISING);
++    verifyPin(PIN_ENABLE, 1, EDGE_NONE);
+     *handle = open(I2C_BUS, O_RDWR | O_NOCTTY);
+-    if((*handle <= 0) || (iInterruptFd <= 0) || (iEnableFd <= 0)) goto error;
++    if(*handle <= 0) goto error;
+     if(ioctl(*handle, I2C_SLAVE, I2C_ADDRESS) < 0) goto error;
+ 
+     return 0;
+ 
+ error:
+-    if (iEnableFd) close(iEnableFd);
+-    if (iInterruptFd) close(iInterruptFd);
+     if (*handle) close(*handle);
+     return -1;
+ }
+ 
+ void tml_close(int handle)
+ {
+-    if(iEnableFd) close(iEnableFd);
+-    if(iInterruptFd) close(iInterruptFd);
++    gpiod_line_release(iEnableLine);
++    gpiod_line_release(iInterruptLine);
++    gpiod_chip_close(chip);
+     if(handle) close(handle);
+ }
+ 
+ void tml_reset(int handle)
+ {
+-    if(iEnableFd) write(iEnableFd, "0", 1 );
++    gpiod_line_set_value(iEnableLine, 0);
+     usleep(10 * 1000);
+-    if(iEnableFd) write(iEnableFd, "1", 1 );
++    gpiod_line_set_value(iEnableLine, 1);
+     usleep(10 * 1000);
+ }
+ 

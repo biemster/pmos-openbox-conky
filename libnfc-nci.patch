@@ -1,0 +1,307 @@
+diff --git a/Makefile.am b/Makefile.am
+index 3561d93..1e84c44 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -36,6 +36,10 @@ AM_CPPFLAGS += \
+ 	$(libARMBoard_la_FLAGS) 
+ endif
+ 
++if ALT
++AM_LDFLAGS += -lgpiod
++endif
++
+ if LPCUSBSIO
+ AM_LDFLAGS += `pkg-config libudev --libs` 
+ 
+diff --git a/src/halimpl/pn54x/tml/i2c/phTmlNfc_alt.h b/src/halimpl/pn54x/tml/i2c/phTmlNfc_alt.h
+index 7646942..84e3473 100755
+--- a/src/halimpl/pn54x/tml/i2c/phTmlNfc_alt.h
++++ b/src/halimpl/pn54x/tml/i2c/phTmlNfc_alt.h
+@@ -28,7 +28,7 @@
+  *  3 = OM557x on BeagleBone black
+  *
+  */
+-#define CONFIGURATION    1
++#define CONFIGURATION    0
+ 
+ #if (CONFIGURATION == 1)
+ /* OM557x on Raspberry Pi */
+@@ -50,8 +50,9 @@
+  #define PIN_ENABLE      30
+ #else
+ /* Custom configuration */
+- #define I2C_BUS         "/dev/i2c-1"
++ #define I2C_BUS         "/dev/i2c-3"
+  #define I2C_ADDRESS     0x28
+- #define PIN_INT         23
+- #define PIN_ENABLE      24
++ #define GPIOCHIP        "gpiochip2"
++ #define PIN_INT         63
++ #define PIN_ENABLE      12
+ #endif
+diff --git a/src/halimpl/pn54x/tml/i2c/phTmlNfc_i2c.c b/src/halimpl/pn54x/tml/i2c/phTmlNfc_i2c.c
+index ac05a16..156d85c 100755
+--- a/src/halimpl/pn54x/tml/i2c/phTmlNfc_i2c.c
++++ b/src/halimpl/pn54x/tml/i2c/phTmlNfc_i2c.c
+@@ -30,6 +30,7 @@
+ 
+ #include <linux/i2c-dev.h>
+ #include <linux/i2c.h>
++#include <gpiod.h>
+ 
+ #include <phNxpLog.h>
+ #include <phTmlNfc_i2c.h>
+@@ -55,8 +56,9 @@ static bool_t bFwDnldFlag = FALSE;
+ // ----------------------------------------------------------------------------
+ // Global variables
+ // ----------------------------------------------------------------------------
+-static int iEnableFd    = 0;
+-static int iInterruptFd = 0;
++static struct gpiod_chip *chip = {0};
++static struct gpiod_line *iEnableLine = {0};
++static struct gpiod_line *iInterruptLine = {0};
+ static int iI2CFd       = 0;
+ static int dummyHandle = 1234;
+ 
+@@ -70,142 +72,55 @@ static int dummyHandle = 1234;
+ #define EDGE_BOTH    3
+ 
+ static int verifyPin( int pin, int isoutput, int edge ) {
+-    char buf[40];
+-    // Check if gpio pin has already been created
+-    int hasGpio = 0;
+-    sprintf( buf, "/sys/class/gpio/gpio%d", pin );
+-    NXPLOG_TML_D( "Pin %s\n", buf );
+-    int fd = open( buf, O_RDONLY );
+-    if ( fd <= 0 ) {
+-        // Pin not exported yet
+-        NXPLOG_TML_D( "Create pin %s\n", buf );
+-        if ( ( fd = open( "/sys/class/gpio/export", O_WRONLY ) ) > 0 ) {
+-            sprintf( buf, "%d", pin );
+-            if ( write( fd, buf, strlen(buf) ) == strlen(buf) ) {
+-                hasGpio = 1;
+-		usleep(100*1000);
+-            }
+-        }
+-    } else {
+-        NXPLOG_TML_E( "System already has pin %s\n", buf );
+-        hasGpio = 1;
++    // this function signature is not optimal, but kept to keep the patch small
++    if(isoutput) { // VEN
++        iEnableLine = gpiod_chip_get_line(chip, pin);
++        gpiod_line_request_output(iEnableLine, "nfc_VEN", 0);
+     }
+-    close( fd );
+-
+-    if ( hasGpio ) {
+-        // Make sure it is an output
+-        sprintf( buf, "/sys/class/gpio/gpio%d/direction", pin );
+-        NXPLOG_TML_D( "Direction %s\n", buf );
+-        fd = open( buf, O_WRONLY );
+-        if ( fd <= 0 ) {
+-            NXPLOG_TML_E( "Could not open direction port '%s' (%s)", buf, strerror(errno) );
+-        } else {
+-            if ( isoutput ) {
+-                if ( write(fd,"out",3) == 3 ) {
+-                    NXPLOG_TML_D( "Pin %d now an output\n", pin );
+-                }
+-                close(fd);
+-
+-                // Open pin and make sure it is off
+-                sprintf( buf, "/sys/class/gpio/gpio%d/value", pin );
+-                fd = open( buf, O_RDWR );
+-                if ( fd <= 0 ) {
+-                    NXPLOG_TML_E( "Could not open value port '%s' (%s)", buf, strerror(errno) );
+-                } else {
+-                    if ( write( fd, "0", 1 ) == 1 ) {
+-                        NXPLOG_TML_D( "Pin %d now off\n", pin );
+-                    }
+-                    return( fd );  // Success
+-                }
+-            } else {
+-                if ( write(fd,"in",2) == 2 ) {
+-                    NXPLOG_TML_D( "Pin %d now an input\n", pin );
+-                }
+-                close(fd);
+-
+-                if ( edge != EDGE_NONE ) {
+-                    // Open pin edge control
+-                    sprintf( buf, "/sys/class/gpio/gpio%d/edge", pin );
+-                    NXPLOG_TML_D( "Edge %s\n", buf );
+-                    fd = open( buf, O_RDWR );
+-                    if ( fd <= 0 ) {
+-                        NXPLOG_TML_E( "Could not open edge port '%s' (%s)",    buf, strerror(errno) );
+-                    } else {
+-                        char * edge_str = "none";
+-                        switch ( edge ) {
+-                          case EDGE_RISING:  edge_str = "rising"; break;
+-                          case EDGE_FALLING: edge_str = "falling"; break;
+-                          case EDGE_BOTH:    edge_str = "both"; break;
+-                        }
+-                        int l = strlen(edge_str);
+-                        NXPLOG_TML_D( "Edge-string %s - %d\n", edge_str, l );
+-                        if ( write( fd, edge_str, l ) == l ) {
+-                            NXPLOG_TML_D( "Pin %d trigger on %s\n", pin, edge_str );
+-                        }
+-                        close(fd);
+-                    }    
+-                }
+-            
+-                // Open pin
+-                sprintf( buf, "/sys/class/gpio/gpio%d/value", pin );
+-                NXPLOG_TML_D( "Value %s\n", buf );
+-                fd = open( buf, O_RDONLY );
+-                if ( fd <= 0 ) {
+-                    NXPLOG_TML_E( "Could not open value port '%s' (%s)", buf, strerror(errno) );
+-                } else {
+-                    return( fd );  // Success
+-                }
+-            }
++    else {// IRQ
++        iInterruptLine = gpiod_chip_get_line(chip, pin);
++        switch(edge) {
++        case EDGE_RISING:
++            gpiod_line_request_rising_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        case EDGE_FALLING:
++            gpiod_line_request_falling_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        case EDGE_BOTH:
++            gpiod_line_request_rising_edge_events(iInterruptLine, "nfc_IRQ");
++            gpiod_line_request_falling_edge_events(iInterruptLine, "nfc_IRQ");
++            break;
++        default:
++            gpiod_line_request_input(iInterruptLine, "nfc_IRQ");
++            break;
+         }
+     }
+-    return( 0 );
++    return 0;
+ }
+ 
+ static void pnOn( void ) {
+-    if ( iEnableFd ) write( iEnableFd, "1", 1 );
++    gpiod_line_set_value(iEnableLine, 1);
+ }
+ 
+ static void pnOff( void ) {
+-    if ( iEnableFd ) write( iEnableFd, "0", 1 );
++    gpiod_line_set_value(iEnableLine, 0);
+ }
+ 
+-static int pnGetint( void ) {
+-    int len;
+-    char buf[2];
+-    
+-    if (iInterruptFd <= 0) {
+-        NXPLOG_TML_E( "Error with interrupt-detect pin (%d)", iInterruptFd );
+-        return( -1 );
+-    }
+-
+-    // Seek to the start of the file
+-    lseek(iInterruptFd, SEEK_SET, 0);
+-
+-    // Read the field_detect line
+-    len = read(iInterruptFd, buf, 2);
++static void wait4interrupt( void ) {    
++    struct timespec ts = { 0, 300000000 };
++    struct gpiod_line_event event;
++    int ret;
+ 
+-    if (len != 2) {
+-        NXPLOG_TML_E( "Error with interrupt-detect pin (%s)", strerror(errno));
+-        return( 0 );
++    ret = gpiod_line_event_wait(iInterruptLine, &ts);
++    if (ret < 0) {
++        NXPLOG_TML_E("IRQ general failure\n");
++        ret = -1;
+     }
+-
+-    return (buf[0] != '0');
+-}
+-
+-static void wait4interrupt( void ) {
+-    /* Open STREAMS device. */
+-    struct pollfd fds[1];
+-    fds[0].fd = iInterruptFd;
+-    fds[0].events = POLLPRI;
+-    int timeout_msecs = -1;   // 100000;
+-    int ret;
+-    
+-    while (!pnGetint()) {
+-        // Wait for an edge on the GPIO pin to get woken up
+-        ret = poll(fds, 1, timeout_msecs);
+-        if ( ret != 1 ) {
+-          NXPLOG_TML_D( "wait4interrupt() %d - %s, ", ret, strerror(errno) );
+-        }
++    else if (ret == 0) {
++        NXPLOG_TML_E("IRQ timeout\n");
++    }
++    else {
++        gpiod_line_event_read(iInterruptLine, &event);
+     }
+ }
+ #endif
+@@ -224,8 +139,9 @@ static void wait4interrupt( void ) {
+ void phTmlNfc_i2c_close(void *pDevHandle)
+ {
+ #ifdef PHFL_TML_ALT_NFC
+-    if ( iEnableFd    ) close(iEnableFd);
+-    if ( iInterruptFd ) close(iInterruptFd);
++    gpiod_line_release(iEnableLine);
++    gpiod_line_release(iInterruptLine);
++    gpiod_chip_close(chip);
+     if ( iI2CFd       ) close(iI2CFd);
+ #else
+     if (NULL != pDevHandle) close((intptr_t)pDevHandle);
+@@ -254,16 +170,15 @@ NFCSTATUS phTmlNfc_i2c_open_and_configure(pphTmlNfc_Config_t pConfig, void ** pL
+     NXPLOG_TML_D("phTmlNfc_i2c_open_and_configure Alternative NFC\n");
+     NXPLOG_TML_D( "NFC - Assign IO pins\n");
+     // Assign IO pins
+-    iInterruptFd = verifyPin( PIN_INT,    0, EDGE_RISING );
+-    iEnableFd    = verifyPin( PIN_ENABLE, 1, EDGE_NONE   );
++    chip = gpiod_chip_open_by_name(GPIOCHIP);
++    verifyPin( PIN_INT,    0, EDGE_RISING );
++    verifyPin( PIN_ENABLE, 1, EDGE_NONE   );
+     NXPLOG_TML_D( "NFCHW - open I2C bus - %s\n", I2C_BUS);
+ 
+     // I2C bus
+     iI2CFd = open( I2C_BUS, O_RDWR | O_NOCTTY);
+     if (iI2CFd < 0) {
+         NXPLOG_TML_E( "Could not open I2C bus '%s' (%s)", I2C_BUS, strerror(errno));
+-        if ( iEnableFd    ) close(iEnableFd);
+-        if ( iInterruptFd ) close(iInterruptFd);
+         return( NFCSTATUS_INVALID_DEVICE );
+     }
+ 
+@@ -272,8 +187,6 @@ NFCSTATUS phTmlNfc_i2c_open_and_configure(pphTmlNfc_Config_t pConfig, void ** pL
+     // I2C slave address
+     if (ioctl(iI2CFd, I2C_SLAVE, I2C_ADDRESS) < 0) {
+         NXPLOG_TML_E( "Cannot select I2C address (%s)\n", strerror(errno));
+-        if ( iEnableFd    ) close(iEnableFd);
+-        if ( iInterruptFd ) close(iInterruptFd);
+         close(iI2CFd);
+         return( NFCSTATUS_INVALID_DEVICE );
+     }
+diff --git a/src/service/interface/nativeNfcLlcp.cpp b/src/service/interface/nativeNfcLlcp.cpp
+index d3a4137..3effb2c 100644
+--- a/src/service/interface/nativeNfcLlcp.cpp
++++ b/src/service/interface/nativeNfcLlcp.cpp
+@@ -445,7 +445,7 @@ void nativeNfcLlcp_ConnLessStopServer()
+ {
+     NXPLOG_API_D ("%s: enter\n", __FUNCTION__);
+     NFA_P2pDeregister(sLlcpConnLessServerHandle);
+-    sLlcpConnLessServerHandle = NULL;
++    sLlcpConnLessServerHandle = tNFA_HANDLE(0);
+     bDestSap = 0x00;
+     dwLlcpReadLength = 0x00;
+     blMoreDataRemaining = 0x00;
+@@ -459,7 +459,7 @@ void nativeNfcLlcp_ConnLessDeregisterClientCallback()
+ {
+     NXPLOG_API_D ("%s: enter\n", __FUNCTION__);
+     NFA_P2pDeregister(sLlcpConnLessClientHandle);
+-    sLlcpConnLessClientHandle = NULL;
++    sLlcpConnLessClientHandle = tNFA_HANDLE(0);
+     bDestSap = 0x00;
+     dwLlcpReadLength = 0x00;
+     blMoreDataRemaining = 0x00;
