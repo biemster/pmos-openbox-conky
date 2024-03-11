@@ -7,7 +7,7 @@ index 7e6b2e3..b8e370c 100644
  INCLUDES= -I/usr/include/ -I./
  
 -LIBS=
-+LIBS= -lnfc_nci_linux -lgpiod
++LIBS= -lgpiod
  
  CFLAGS=-Wall $(INCLUDES)
  
