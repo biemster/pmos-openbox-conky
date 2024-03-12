@@ -2,6 +2,7 @@
 from periphery import GPIO,I2C,sleep_ms
 
 CMD_DEBUG = True
+def print_bytes(b): return ' '.join([f'{x:02X}' for x in b])
 HW_VER = {0x04: 'PN547 C1', 0x05: 'PN547C2, NPC100, PN7120, NQ410', 0x15: 'NPC120, PN65T', 0x40: 'PN553 A0', 0x41: 'PN553 B0, PN557, NPC400, NQ310, NQ410',
             0x50: 'PN553 A0 + P73', 0x51: 'PN553 B0 + P73 , NQ440, NQ330, PN80T, PN80S, PN81F, PN81T', 0x00: 'PN551', 0x98: 'NPC310', 0xA8: 'PN67T', 0x08: 'PN67T',
             0x28: 'PN548 C2', 0x48: 'NQ210', 0x88: 'PN7150', 0x18: 'pn66T', 0x58: 'NQ220'}
@@ -23,7 +24,7 @@ class NFCC:
 
     def send(self, cmd):
         self.i2c.transfer(self.i2c_addr, [I2C.Message(cmd)])
-        if CMD_DEBUG: print(f">> {' '.join([f'{x:02X}' for x in cmd])}")
+        if CMD_DEBUG: print(f">> {print_bytes(cmd)}")
 
     def recv(self, size=-1):
         res = []
@@ -34,7 +35,7 @@ class NFCC:
         elif size < 0:
             r = self.recv(3)
             res = r + self.recv(r[-1])
-            if CMD_DEBUG: print(f"<< {' '.join([f'{x:02X}' for x in res])}")
+            if CMD_DEBUG: print(f"<< {print_bytes(res)}")
         return res
 
     def reset(self):
@@ -109,9 +110,9 @@ def listen(nfcc, restart=False):
                 print(f'Finished processing tag, restarting loop')
                 break
             if r[:2] == [0x61, 0x06]:
-                print(f"What does this mean? ({' '.join([f'{x:02X}' for x in r])})")
+                print(f"What does this mean? ({print_bytes(r)})")
     else:
-        print(f"E: Could not start discovery loop: {' '.join([f'{x:02X}' for x in r])}")
+        print(f"E: Could not start discovery loop: {print_bytes(r)}")
         return
     listen(nfcc, restart=True)
 
@@ -119,7 +120,7 @@ def emulate(nfcc):
     print('Emulation not implemented yet')
 
 def process_tag(msg):
-    print(f"Tag said hello with {' '.join([f'{x:02X}' for x in msg])}")
+    print(f"Tag said hello with {print_bytes(msg)}")
 
 if __name__ == '__main__':
     main()
