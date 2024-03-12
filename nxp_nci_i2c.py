@@ -80,18 +80,46 @@ def chipid(nfcc):
     nfcc.send(NCICoreInit2_0)
     if nfcc.has_data():
         r = nfcc.recv()
-        idver_offset = 16 + r[8]
-        cid = r[idver_offset]
-        fwv = r[idver_offset +1:idver_offset +4]
-        print(f'Chip ID 0x{cid:02X} ({HW_VER[cid]}), FW ver {fwv[0]:02x}.{fwv[1]:02x}.{fwv[2]:02x}')
+        if r[:2] == [0x40, 0x01] and r[2] >= 4:
+            idver_offset = len(r) -4
+            cid = r[idver_offset]
+            fwv = r[idver_offset +1:idver_offset +4]
+            print(f'Chip ID 0x{cid:02X} ({HW_VER[cid]}), FW ver {fwv[0]:02x}.{fwv[1]:02x}.{fwv[2]:02x}')
     return cid
 
-def listen(nfcc):
-    print('Listen loop not implemented yet')
+def listen(nfcc, restart=False):
+    NCIStartDiscovery = [0x21, 0x03, 0x09, 0x04, 0x00, 0x01, 0x01, 0x01, 0x02, 0x01, 0x06, 0x01];
+    NCIRestartDiscovery = [0x21, 0x06, 0x01, 0x03];
+    if not restart:
+        chipid(nfcc) # initialize
+        nfcc.send(NCIStartDiscovery)
+    else:
+        nfcc.send(NCIRestartDiscovery)
+
+    while not nfcc.has_data(): pass
+    r = nfcc.recv()
+    if r[:4] in [[0x41, 0x03, 0x01, 0x00], [0x41, 0x06, 0x01, 0x00]]:
+        print('Discovery loop started')
+        while True:
+            while not nfcc.has_data(): pass
+            r = nfcc.recv()
+            if r[:2] in [[0x61, 0x03], [0x61, 0x05]]:
+                print(f'Found a tag')
+                process_tag(r)
+                print(f'Finished processing tag, restarting loop')
+                break
+            if r[:2] == [0x61, 0x06]:
+                print(f"What does this mean? ({' '.join([f'{x:02X}' for x in r])})")
+    else:
+        print(f"E: Could not start discovery loop: {' '.join([f'{x:02X}' for x in r])}")
+        return
+    listen(nfcc, restart=True)
 
 def emulate(nfcc):
     print('Emulation not implemented yet')
 
+def process_tag(msg):
+    print(f"Tag said hello with {' '.join([f'{x:02X}' for x in msg])}")
 
 if __name__ == '__main__':
     main()
