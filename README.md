@@ -19,6 +19,7 @@ vim,conky,python3,py3-evdev,py3-evdev-pyc,modemmanager,iw,feh,lisgd,tcpdump,libc
 - [ ] Touch gestures
 - [ ] Sensors
 - [ ] GPS
+- [x] NFC
 - [ ] WhatsApp, iMessage
 - [ ] Power management
 - [ ] Access to internal home network
@@ -101,6 +102,16 @@ $ cat /sys/class/power_supply/pmi8998-charger/current_now
 - wireguard: https://gist.github.com/insdavm/b1034635ab23b8839bf957aa406b5e39
 - sish: https://docs.ssi.sh/
 
+## NFC
+Still a work in progress, but we can talk to the NFC chip:
+1. Enable `i2c-3` and pins 12 and 63 in the device tree using `NFC.patch` from this repo:
+```bash
+cd /boot/dtbs/qcom
+dtc sdm845-oneplus-fajita.dtb -o sdm845-oneplus-fajita.dts
+patch < NFC.patch
+dtc sdm845-oneplus-fajita.dts -o sdm845-oneplus-fajita.dtb
+```
+2. Use (and develop) `nxp_nci_i2c.py` to directly talk to the NFC chip over i2c.
+
 ## Wishlist
 - Camera: https://gitlab.com/sdm845-mainline/linux/-/issues/21
-- NFC: https://gitlab.com/sdm845-mainline/linux/-/merge_requests/62
