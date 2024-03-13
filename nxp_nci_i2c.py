@@ -136,6 +136,45 @@ def emulate(nfcc):
 
 def process_tag(msg):
     print(f"Tag said hello with {format_bytes(msg)}")
+    MT = {0x00: 'DAT', 0x20: 'CMD', 0x40: 'RSP', 0x60: 'NTF'}
+    GID = {0x0: 'NCI Core', 0x1: 'RF Mgmt', 0x2: 'NFCEE Mgmt', 0x3: 'NFC Mgmt'}
+    ConnID = {0x0: 'StaticRF', 0x1: 'StaticHCI'}
+    OID_RFmgmt = {0x0: 'DISCOVER_MAP', 0x1: 'SET_LISTEN_MODE_ROUTING', 0x2: 'GET_LISTEN_MODE_ROUTING', 0x3: 'DISCOVER', 0x4: 'DISCOVER_SELECT', 0x5: 'INTF_ACTIVATED', 0x6: 'DEACTIVATE', 0x7: 'FIELD_INFO'}
+    RF_Intf = {0x0: 'NFCEE Direct', 0x1: 'Frame', 0x2: 'ISO-DEP', 0x3: 'NFC-DEP', 0x6: 'NDEF', 0x7: 'WLC-P Autonomous'}
+    RF_Proto = {0x2: 'T2T', 0x3: 'T3T', 0x4: 'ISO-DEP', 0x5: 'NFC-DEP', 0x6: 'T5T', 0x7: 'NDEF', 0x8: 'WLC'}
+    RF_T_M = {0x0: 'NFC A Passive Poll', 0x1: 'NFC B Passive Poll', 0x2: 'NFC F Passive Poll', 0x3: 'NFC Active Poll', 0x6: 'NFC V Passive Poll',
+            0x80: 'NFC A Passive Listen', 0x81: 'NFC B Passive Listen', 0x82: 'NFC F Passive Listen', 0x83: 'NFC Active Listen'}
+    Bitrates = {0x0: 106, 0x1: 212, 0x2: 424, 0x3: 848, 0x4: 1695, 0x5: 3390, 0x6: 6780, 0x20: 26}
+
+    if msg[0] >> 5:
+        print(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, GID={msg[0] & 0xf}: {GID[msg[0] & 0xf]}')
+    else:
+        print(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, ConnID={msg[0] & 0xf}: {ConnID[msg[0] & 0xf]}')
+    print(f'{msg[1]:02X}: OID={OID_RFmgmt[msg[1]]}')
+    print(f'{msg[2]:02X}: payload len: {msg[2]}')
+    print('===< payload >===')
+    print(f'{msg[3]:02X}: RF Discovery ID: {msg[3]}')
+    print(f'{msg[4]:02X}: RF Interface: {RF_Intf[msg[4]]}')
+    print(f'{msg[5]:02X}: RF Protocol: {RF_Proto[msg[5]]}')
+    print(f'{msg[6]:02X}: Activation RF Technology and Mode: {RF_T_M[msg[6]]}')
+    print(f'{msg[7]:02X}: Max Data Packet Payload Size: {msg[7]}')
+    print(f'{msg[8]:02X}: Initial Number of Credits: {msg[8]}')
+    print(f'{msg[9]:02X}: Length of RF Technology Specific Parameters: {msg[9]}')
+    RFTparams_length = msg[9]
+    print(f'{format_bytes(msg[10:10 +RFTparams_length])}: RF Technology Specific Parameters')
+    process_technology_specparams(msg[6], msg[10:10 +RFTparams_length])
+    print(f'{msg[10 +RFTparams_length]:02X}: Data Exchange RF Technology and Mode: {RF_T_M[msg[10 +RFTparams_length]]}')
+    print(f'{msg[11 +RFTparams_length]:02X}: Data Exchange Transmit Bit Rate: {Bitrates[msg[11 +RFTparams_length]]} Kbit/s')
+    print(f'{msg[12 +RFTparams_length]:02X}: Data Exchange Receive Bit Rate: {Bitrates[msg[12 +RFTparams_length]]} Kbit/s')
+    print(f'{msg[13 +RFTparams_length]:02X}: Length of Activation Parameters: {msg[13 +RFTparams_length]}')
+    ACTparams_length = msg[13 +RFTparams_length]
+    if ACTparams_length:
+        ACTparams_idx = 14 +RFTparams_length
+        print(f'{format_bytes(msg[ACTparams_idx:ACTparams_idx +ACTparams_length])}: Activation Parameters:')
+
+def process_technology_specparams(mode, params):
+    print(f'{mode:02X}: {format_bytes(params)}')
+
 
 if __name__ == '__main__':
     main()
