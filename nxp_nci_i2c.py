@@ -4,9 +4,11 @@ from periphery import GPIO,I2C,sleep_ms
 # debugging, is controlled by --debug {NONE,MSG,CMD,BOTH}
 MSG_DEBUG = False # general debug statement
 CMD_DEBUG = False # print raw commands to and from NFCC
+TAG_DEBUG = False # print tag protocol parsing
 def format_bytes(b): return ' '.join([f'{x:02X}' for x in b])
 def print_debug(msg): print(msg) if MSG_DEBUG else None
 def print_cmd(direction, b): print(direction + ' ' + format_bytes(b)) if CMD_DEBUG else None
+def print_tag(msg): print(msg) if TAG_DEBUG else None
 
 HW_VER = {0x04: 'PN547 C1', 0x05: 'PN547C2, NPC100, PN7120, NQ410', 0x15: 'NPC120, PN65T', 0x40: 'PN553 A0', 0x41: 'PN553 B0, PN557, NPC400, NQ310, NQ410',
             0x50: 'PN553 A0 + P73', 0x51: 'PN553 B0 + P73 , NQ440, NQ330, PN80T, PN80S, PN81F, PN81T', 0x00: 'PN551', 0x98: 'NPC310', 0xA8: 'PN67T', 0x08: 'PN67T',
@@ -74,11 +76,12 @@ def main():
     parser.add_argument('--chipid', help='Check NFC chip ID', action='store_true')
     parser.add_argument('--listen', help='Listen for tags/devices', action='store_true')
     parser.add_argument('--emulate', help='Emulate tag/card', action='store_true')
-    parser.add_argument('--debug', help='Set debugging level (NONE,MSG,CMD,BOTH)', default='NONE')
+    parser.add_argument('--debug', help='Set debugging level (NONE,MSG,CMD,TAG,ALL)', default='NONE')
     args = parser.parse_args()
 
-    MSG_DEBUG = (args.debug in ['BOTH', 'MSG'])
-    CMD_DEBUG = (args.debug in ['BOTH', 'CMD'])
+    MSG_DEBUG = ('MSG' in args.debug or 'ALL' in args.debug)
+    CMD_DEBUG = ('CMD' in args.debug or 'ALL' in args.debug)
+    TAG_DEBUG = ('TAG' in args.debug or 'ALL' in args.debug)
 
     nfcc = NFCC(args.i2c, args.address, args.gpio, args.ven, args.irq)
 
@@ -135,7 +138,8 @@ def emulate(nfcc):
     print('Emulation not implemented yet')
 
 def process_tag(msg):
-    print(f"Tag said hello with {format_bytes(msg)}")
+    print_debug(f"Tag said hello with {format_bytes(msg)}")
+    # Table 80 from https://nfc-forum.org/uploads/specifications/27-NFCForum-TS-NCI-2.3.pdf
     MT = {0x00: 'DAT', 0x20: 'CMD', 0x40: 'RSP', 0x60: 'NTF'}
     GID = {0x0: 'NCI Core', 0x1: 'RF Mgmt', 0x2: 'NFCEE Mgmt', 0x3: 'NFC Mgmt'}
     ConnID = {0x0: 'StaticRF', 0x1: 'StaticHCI'}
@@ -147,33 +151,92 @@ def process_tag(msg):
     Bitrates = {0x0: 106, 0x1: 212, 0x2: 424, 0x3: 848, 0x4: 1695, 0x5: 3390, 0x6: 6780, 0x20: 26}
 
     if msg[0] >> 5:
-        print(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, GID={msg[0] & 0xf}: {GID[msg[0] & 0xf]}')
+        print_tag(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, GID={msg[0] & 0xf}: {GID[msg[0] & 0xf]}')
     else:
-        print(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, ConnID={msg[0] & 0xf}: {ConnID[msg[0] & 0xf]}')
-    print(f'{msg[1]:02X}: OID={OID_RFmgmt[msg[1]]}')
-    print(f'{msg[2]:02X}: payload len: {msg[2]}')
-    print('===< payload >===')
-    print(f'{msg[3]:02X}: RF Discovery ID: {msg[3]}')
-    print(f'{msg[4]:02X}: RF Interface: {RF_Intf[msg[4]]}')
-    print(f'{msg[5]:02X}: RF Protocol: {RF_Proto[msg[5]]}')
-    print(f'{msg[6]:02X}: Activation RF Technology and Mode: {RF_T_M[msg[6]]}')
-    print(f'{msg[7]:02X}: Max Data Packet Payload Size: {msg[7]}')
-    print(f'{msg[8]:02X}: Initial Number of Credits: {msg[8]}')
-    print(f'{msg[9]:02X}: Length of RF Technology Specific Parameters: {msg[9]}')
+        print_tag(f'{msg[0]:02X}: MT={msg[0] & 0b11100000:02X}: {MT[msg[0] & 0b11100000]}, ConnID={msg[0] & 0xf}: {ConnID[msg[0] & 0xf]}')
+    print_tag(f'{msg[1]:02X}: OID={OID_RFmgmt[msg[1]]}')
+    print_tag(f'{msg[2]:02X}: payload len: {msg[2]}')
+    print_tag('===< payload >===')
+    print_tag(f'{msg[3]:02X}: RF Discovery ID: {msg[3]}')
+    print_tag(f'{msg[4]:02X}: RF Interface: {RF_Intf[msg[4]]}')
+    print_tag(f'{msg[5]:02X}: RF Protocol: {RF_Proto[msg[5]]}')
+    protocol = msg[5]
+    print_tag(f'{msg[6]:02X}: Activation RF Technology and Mode: {RF_T_M[msg[6]]}')
+    mode = msg[6]
+    print_tag(f'{msg[7]:02X}: Max Data Packet Payload Size: {msg[7]}')
+    print_tag(f'{msg[8]:02X}: Initial Number of Credits: {msg[8]}')
+    print_tag(f'{msg[9]:02X}: Length of RF Technology Specific Parameters: {msg[9]}')
     RFTparams_length = msg[9]
-    print(f'{format_bytes(msg[10:10 +RFTparams_length])}: RF Technology Specific Parameters')
-    process_technology_specparams(msg[6], msg[10:10 +RFTparams_length])
-    print(f'{msg[10 +RFTparams_length]:02X}: Data Exchange RF Technology and Mode: {RF_T_M[msg[10 +RFTparams_length]]}')
-    print(f'{msg[11 +RFTparams_length]:02X}: Data Exchange Transmit Bit Rate: {Bitrates[msg[11 +RFTparams_length]]} Kbit/s')
-    print(f'{msg[12 +RFTparams_length]:02X}: Data Exchange Receive Bit Rate: {Bitrates[msg[12 +RFTparams_length]]} Kbit/s')
-    print(f'{msg[13 +RFTparams_length]:02X}: Length of Activation Parameters: {msg[13 +RFTparams_length]}')
+    print_tag(f'{format_bytes(msg[10:10 +RFTparams_length])}: RF Technology Specific Parameters')
+    sel_resp = process_techspecparams(mode, msg[10:10 +RFTparams_length])
+    print_tag(f'{msg[10 +RFTparams_length]:02X}: Data Exchange RF Technology and Mode: {RF_T_M[msg[10 +RFTparams_length]]}')
+    print_tag(f'{msg[11 +RFTparams_length]:02X}: Data Exchange Transmit Bit Rate: {Bitrates[msg[11 +RFTparams_length]]} kbps')
+    print_tag(f'{msg[12 +RFTparams_length]:02X}: Data Exchange Receive Bit Rate: {Bitrates[msg[12 +RFTparams_length]]} kbps')
+    print_tag(f'{msg[13 +RFTparams_length]:02X}: Length of Activation Parameters: {msg[13 +RFTparams_length]}')
     ACTparams_length = msg[13 +RFTparams_length]
     if ACTparams_length:
         ACTparams_idx = 14 +RFTparams_length
-        print(f'{format_bytes(msg[ACTparams_idx:ACTparams_idx +ACTparams_length])}: Activation Parameters:')
+        print_tag(f'{format_bytes(msg[ACTparams_idx:ACTparams_idx +ACTparams_length])}: Activation Parameters:')
 
-def process_technology_specparams(mode, params):
-    print(f'{mode:02X}: {format_bytes(params)}')
+    tag_type = '<unknown/unimplemented>'
+    if protocol == 0x2: # 'T2T'
+        tag_type = 'iso14443 3A'
+        if sel_resp == 0x00:
+            tag_type = 'Mifare Ultralight'
+        if sel_resp == 0x01:
+            tag_type = 'Mifare Classic Skylander'
+        if sel_resp in [0x08, 0x18]:
+            tag_type = 'Mifare Classic'
+    elif protocol == 0x3: # 'T3T'
+        tag_type = 'Felica'
+    elif protocol == 0x4: # 'ISO-DEP'
+        if mode in [0x0, 0x80, 0x3, 0x83]:
+            tag_type = 'ISO DEP - Type A'
+        if mode in [0x1, 0x81]:
+            tag_type = 'ISO DEP - Type B'
+    print(f'* Tag detected: {tag_type}')
+    if tag_type == '<unknown/unimplemented>': print('* rerun with --debug=TAG to debug')
+
+def process_techspecparams(mode, params):
+    print_debug(f'Technology Specific Parameters: {mode:02X}: {format_bytes(params)}')
+    sel_resp = None
+    if mode == 0x0: # NFC A Passive Poll
+        print_tag(f'  {format_bytes(params[:2])}: SENSE_RES Response')
+        print_tag(f'  {params[2]:02X}: NFCID1 length: {params[2]}')
+        nfcid1_length = params[2]
+        print_tag(f'  {format_bytes(params[3:3 +nfcid1_length])}: NFCID1')
+        print_tag(f'  {params[3 +nfcid1_length]:02X}: SEL_RES Response length (should be 1): {params[3 +nfcid1_length]}')
+        print_tag(f'  {params[4 +nfcid1_length]:02X}: SEL_RES Response')
+        sel_resp = params[4 +nfcid1_length]
+    elif mode == 0x80: # NFC A Passive Listen
+        print_tag('  No parameters defined for this mode')
+    elif mode == 0x1: # NFC B Passive Poll
+        print_tag(f'  {params[0]:02X}: SENSB_RES Response length: {params[0]}')
+        SRResp_length = params[0]
+        print_tag(f'  {format_bytes(params[1:1 +SRResp_length])}: SENSB_RES Response')
+    elif mode == 0x81: # NFC B Passive Listen
+        print_tag(f'  {params[0]:02X}: SENSB_REQ Command')
+    elif mode == 0x2: # NFC F Passive Poll
+        print_tag(f'  {params[0]:02X}: Bit Rate: {Bitrates[params[0]]} kbps')
+        print_tag(f'  {params[1]:02X}: SENSF_RES Response length: {params[1]}')
+        SRResp_length = params[1]
+        print_tag(f'  {format_bytes(params[2:2 +SRResp_length])}: SENSF_RES Response')
+    elif mode == 0x82: # NFC F Passive Listen
+        print_tag(f'  {params[0]:02X}: NFCID2 length: {params[0]}')
+        if params[0]: print_tag(f'  {format_bytes(params[1:9])}: NFCID2')
+    elif mode == 0x6: # NFC V Passive Poll
+        print_tag(f'  {params[0]:02X}: RES_FLAG')
+        print_tag(f'  {params[1]:02X}: DSFID')
+        print_tag(f'  {format_bytes(params[2:10])}: UID')
+    elif mode == 0x3: # NFC Active Poll
+        print_tag(f'  {params[0]:02X}: ATR_RES Response length: {params[0]}')
+        ATRRes_length = params[0]
+        print_tag(f'  {format_bytes(params[1:1 +ATRRes_length])}: ATR_RES Response')
+    elif mode == 0x83: # NFC Active Listen
+        print_tag(f'  {params[0]:02X}: ATR_REQ Command length: {params[0]}')
+        ATRReq_length = params[0]
+        print_tag(f'  {format_bytes(params[1:1 +ATRReq_length])}: ATR_REQ Command')
+    return sel_resp
 
 
 if __name__ == '__main__':
