@@ -45,6 +45,16 @@ class NFCC:
             print_cmd('<<', res)
         return res
 
+    def datapacket_xfer(self, datapacket):
+        header = [0x00, 0x00]
+        self.send(header + [len(datapacket)] + datapacket)
+        r = []
+        while r[:2] != [0x00, 0x00]:
+            if self.has_data(): r = self.recv()
+            else: break
+        read_len = r[2]
+        return r[3:3 +read_len] if r[:2] == [0x00, 0x00] else []
+
     def reset(self):
         r = self.send([0x20, 0x00, 0x01, 0x01])
         if self.has_data(): # Catch potential notification
@@ -125,7 +135,9 @@ def listen(nfcc, restart=False):
             r = nfcc.recv()
             if r[:2] in [[0x61, 0x03], [0x61, 0x05]]:
                 print_debug(f'Found a tag')
-                process_tag(r)
+                tag_type = process_tag(r)
+                if tag_type == 'Mifare Ultralight':
+                    mifare_ultralight_read(nfcc)
                 print_debug(f'Finished processing tag, restarting loop')
                 break
             if r[:2] == [0x61, 0x06]:
@@ -197,6 +209,7 @@ def process_tag(msg):
             tag_type = 'ISO DEP - Type B'
     print(f'* Tag detected: {tag_type}')
     if tag_type == '<unknown/unimplemented>': print('* rerun with --debug=TAG to debug')
+    return tag_type
 
 def process_techspecparams(mode, params):
     print_debug(f'Technology Specific Parameters: {mode:02X}: {format_bytes(params)}')
@@ -239,6 +252,16 @@ def process_techspecparams(mode, params):
         print_tag(f'  {format_bytes(params[1:1 +ATRReq_length])}: ATR_REQ Command')
     return sel_resp
 
+def mifare_ultralight_read(nfcc):
+    ReadCmd = [0x30, 0x00];
+    SectorSelect1Cmd = [0xC2, 0xFF];
+    SectorSelect2Cmd = [0x01, 0x00, 0x00, 0x00];
+
+    print(f'*-- Read response: {format_bytes(nfcc.datapacket_xfer(ReadCmd))}')
+    print(f'*-- SectorSelect1 response: {format_bytes(nfcc.datapacket_xfer(SectorSelect1Cmd))}')
+    print(f'*-- Read response: {format_bytes(nfcc.datapacket_xfer(ReadCmd))}')
+    print(f'*-- SectorSelect2 response: {format_bytes(nfcc.datapacket_xfer(SectorSelect2Cmd))}')
+    print(f'*-- Read response: {format_bytes(nfcc.datapacket_xfer(ReadCmd))}')
 
 if __name__ == '__main__':
     main()
