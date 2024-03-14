@@ -65,6 +65,7 @@ class NFCC:
 def main():
     global MSG_DEBUG
     global CMD_DEBUG
+    global TAG_DEBUG
 
     import argparse
     parser = argparse.ArgumentParser()
