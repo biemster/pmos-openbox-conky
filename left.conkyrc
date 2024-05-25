@@ -1,0 +1,55 @@
+conky.config = {
+
+	own_window = true,
+	own_window_type = 'desktop',
+	own_window_transparent = true,
+	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    
+	alignment = 'top_left',
+	gap_x = 3,
+	gap_y = 0,
+	minimum_width = '200',
+
+	use_xft = true,
+	font = 'Ubuntu:size=18',
+	xftalpha = 1,
+	override_utf8_locale = true,
+    
+    
+	draw_shades = false,
+	default_shade_color = '#222222',
+	draw_outline = false,
+	default_outline_color = '#222222',
+    
+	default_color = '#50fafa',
+	color0 = '#8c8774',
+	color1 = '#827d6a',
+	color2 = '#f4a100',
+	cpu_avg_samples = 2,
+	
+
+	draw_borders = false,
+	stippled_borders = 0,
+	border_inner_margin = 8,
+	border_outer_margin = 8,
+	border_width = 1,
+	draw_graph_borders = true,
+
+	background = true,
+	no_buffers = true,
+	imlib_cache_size = 0,
+	short_units = true,
+	double_buffer = true,
+	update_interval = 1,
+};
+
+conky.text = [[
+$color${goto 35}${font Cantarell:size=100}${time %H:%M}$font
+$color${font Cantarell:size=38}${time %A}$font\
+${voffset -20}$alignr$color1${font Cantarell:size=100}${time %e}$font
+$color${voffset -20}$color1${font Cantarell:size=54}${time %b}$font\
+${voffset -3} $color${font Cantarell:size=60} ${time %Y}$font
+#
+${voffset 8}${goto 18}${color}BATTERY${alignr}${battery_percent bq27411-0}%
+${voffset -2}$color2$alignr${battery_bar 10,500 bq27411-0}${voffset -2}
+]];

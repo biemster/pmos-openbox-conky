@@ -46,14 +46,14 @@ class NFCC:
         return res
 
     def datapacket_xfer(self, datapacket):
-        header = [0x00, 0x00]
-        self.send(header + [len(datapacket)] + datapacket)
+        DataPacketHdr = [0x00, 0x00]
+        self.send(DataPacketHdr + [len(datapacket)] + datapacket)
         r = []
-        while r[:2] != [0x00, 0x00]:
+        while r[:2] != DataPacketHdr:
             if self.has_data(): r = self.recv()
             else: break
         read_len = r[2]
-        return r[3:3 +read_len] if r[:2] == [0x00, 0x00] else []
+        return r[3:3 +read_len] if r[:2] == DataPacketHdr else []
 
     def reset(self):
         r = self.send([0x20, 0x00, 0x01, 0x01])

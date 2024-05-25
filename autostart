@@ -7,14 +7,9 @@ echo "full;nocall" > /tmp/ui_statemachine
 xset dpms 10 10 10
 
 # conkies
-/usr/bin/conky -c $HOME/conkies/topbar_left.conkyrc &
-/usr/bin/conky -c $HOME/conkies/topbar_right.conkyrc &
-/usr/bin/conky -c $HOME/conkies/status_left.conkyrc &
-/usr/bin/conky -c $HOME/conkies/status_right.conkyrc &
-/usr/bin/conky -c $HOME/conkies/call.conkyrc &
-/usr/bin/conky -c $HOME/conkies/swipe_unlock.conkyrc &
-#/usr/bin/conky -c $HOME/conkies/bottom_left.conkyrc &
-#/usr/bin/conky -c $HOME/conkies/bottom_right.conkyrc &
+/usr/bin/conky -c $HOME/conkies/left.conkyrc
+/usr/bin/conky -c $HOME/conkies/right.conkyrc
+#/usr/bin/conky -c $HOME/conkies/bottom.conkyrc
 
 # gesture recognition
 lisgd -d /dev/input/event4 \

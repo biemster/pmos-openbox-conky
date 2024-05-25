@@ -1,0 +1,82 @@
+conky.config = {
+
+	own_window = true,
+	own_window_type = 'desktop',
+	own_window_transparent = true,
+	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
+    
+	alignment = 'top_right',
+	gap_x = 3,
+	gap_y = 100,
+	minimum_width = 500,
+	maximum_width = 500,
+
+	use_xft = true,
+	font = 'Ubuntu:size=18',
+	xftalpha = 1,
+	override_utf8_locale = true,
+    
+    
+	draw_shades = false,
+	default_shade_color = '#222222',
+	draw_outline = false,
+	default_outline_color = '#222222',
+    
+	default_color = '#50fafa',
+	color0 = '#8c8774',
+	color1 = '#827d6a',
+	color2 = '#f4a100',
+	cpu_avg_samples = 2,
+	
+
+	draw_borders = false,
+	stippled_borders = 0,
+	border_inner_margin = 8,
+	border_outer_margin = 8,
+	border_width = 1,
+	draw_graph_borders = true,
+
+	background = true,
+	no_buffers = true,
+	imlib_cache_size = 0,
+	short_units = true,
+	double_buffer = true,
+	update_interval = 1,
+
+	template0 = [[qmapmux0.0]]
+};
+
+conky.text = [[
+${if_existing /tmp/ui_statemachine full}\
+${color}HOME${alignr}5 new
+${voffset -2}$color2$alignr${execbar 10,500 echo "5/0.09" | bc -l}${voffset -2}
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Topic: Event summary from MQTT or ESPNOW
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Topic: Event summary from MQTT or ESPNOW
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Topic: Event summary from MQTT or ESPNOW
+${color}SMS${alignr}0 new
+${voffset -2}$color2$alignr${execbar 10,500 echo "0/0.09" | bc -l}${voffset -2}
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color}WhatsApp${alignr}1 new
+${voffset -2}$color2$alignr${execbar 10,500 echo "1/0.09" | bc -l}${voffset -2}
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color}iMessage${alignr}3 new
+${voffset -2}$color2$alignr${execbar 10,500 echo "3/0.09" | bc -l}${voffset -2}
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${endif}
+]];
