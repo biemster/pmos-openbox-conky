@@ -50,6 +50,6 @@ ${voffset -20}$alignr$color1${font Cantarell:size=100}${time %e}$font
 $color${voffset -20}$color1${font Cantarell:size=54}${time %b}$font\
 ${voffset -3} $color${font Cantarell:size=60} ${time %Y}$font
 #
-${voffset 8}${goto 18}${color}BATTERY${alignr}${battery_percent bq27411-0}%
+${voffset 8}${goto 18}${color}BATTERY ${color1}${exec cat /sys/class/power_supply/pmi8998-charger/status}${alignr}${color}${battery_percent bq27411-0}%
 ${voffset -2}$color2$alignr${battery_bar 10,500 bq27411-0}${voffset -2}
 ]];
