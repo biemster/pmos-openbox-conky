@@ -7,18 +7,18 @@ Development is done on a OnePlus 6T in the `edge` release, so a couple things wi
 be easily adaptable to other platforms.
 Most of the following extra packages are needed to run everything:
 ```
-vim,git,conky,python3,py3-evdev,py3-evdev-pyc,py3-dbus,dbus-x11,modemmanager,iw,feh,lisgd,tcpdump,libc6-compat,lm-sensors,iio-sensor-proxy,xset,xwd,curl,nmap,dunst,dtc,aircrack-ng
+vim,git,conky,python3,py3-evdev,py3-evdev-pyc,dbus-x11,modemmanager,iw,feh,lisgd,tcpdump,libc6-compat,lm-sensors,iio-sensor-proxy,xset,xwd,curl,nmap,dunst,dtc,scapy,qrtr,qcom-diag
 ```
 
 ## Targets
 - [x] Basic UI
 - [ ] Basic apps (Dialer, SMS, maps, web, etc)
 - [x] Notifications
-- [ ] Calls
+- [ ] Calls / SMS
 - [x] Mobile data
-- [ ] Touch gestures
-- [ ] Sensors
-- [ ] GPS
+- [x] Touch gestures
+- [x] Sensors
+- [x] GPS
 - [x] NFC
 - [ ] WhatsApp, iMessage
 - [ ] Power management
