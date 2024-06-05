@@ -9,6 +9,7 @@ from time import sleep
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--eventlistener', help='Listen for events from /dev/input/* and sensors', action='store_true')
+    parser.add_argument('-s', '--opportunistic-sleep', help='Allow sleeping by removing "phone.py" wakelock when idle for a while and not connected', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
     parser.add_argument('-u', '--swipeup', help='Execute swipe up action', action='store_true')
@@ -25,6 +26,7 @@ def main():
     args = parser.parse_args()
 
     if args.eventlistener: eventlistener()
+    elif args.opportunistic_sleep: opportunistic_sleep()
     elif args.swipeleft: swipeleft()
     elif args.swiperight: swiperight()
     elif args.swipeup: swipedup()
@@ -111,6 +113,37 @@ def gps():
             gpsdata['acc'] = float(sentence[8])
     print(f'gps: {gpsdata['utc']} {gpsdata['lat']:.3f} {gpsdata['lon']:.3f} {gpsdata['acc']} {gpsdata['alt']}')
 
+def screen_on():
+    # screensaver reset resets the idle timer, dpms force on let's dpms know the screen is on again
+    subprocess.run(['xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def opportunistic_sleep_lock():
+    with open('/sys/power/wake_lock','w') as f:
+        f.write('phone.py')
+
+def opportunistic_sleep_unlock():
+    with open('/sys/power/wake_unlock','w') as f:
+        f.write('phone.py')
+
+def opportunistic_sleep():
+    while True:
+        xsetq = subprocess.check_output(['xset', 'q']).decode().split('\n')[-2]
+        screen_off = 'Monitor is Off' in xsetq
+
+        netstat = subprocess.check_output(['netstat', '-tpn'], stderr=subprocess.DEVNULL).decode().split('\n')[2:]
+        ssh_connection_active = False
+        for connection in netstat:
+            if connection.split()[3].endswith(':22'):
+                ssh_connection_active = True
+                break
+
+        if not screen_off or ssh_connection_active:
+            sleep(3)
+        else:
+            break
+    opportunistic_sleep_unlock()
+
 def wlan0_modeset(mode='managed'):
     if os.getuid() != 0:
         print('wlan0_modeset should be run as root, so do what you just did with sudo')
@@ -139,12 +172,12 @@ def wlan0_modeset(mode='managed'):
 
 def wificonnect(accesspoint):
     wifi = subprocess.check_output(['nmcli' ,'device', 'wifi']).decode().split('\n')
-    # this is not correct, wifi[1] will be the first anyway if it is the closest
-    # FIXME check if there is an actual connection already
-    if accesspoint not in wifi[1]:
-        wifidisconnect()
-        wlan0_modeset('managed')
-        subprocess.run(['nmcli', 'device', 'wifi', 'connect', accesspoint], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if len(wifi) > 2:
+        ssid1 = wifi[1].split()
+        if ssid[0] != '*' or ssid[2] != 'accesspoint':
+            wifidisconnect()
+            wlan0_modeset('managed')
+            subprocess.run(['nmcli', 'device', 'wifi', 'connect', accesspoint], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def wifidisconnect():
     subprocess.run(['nmcli', 'device', 'disconnect', 'wlan0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -155,7 +188,7 @@ def espnow():
 
     pf = 'type 0 subtype 0xd0 and wlan[24:4]=0x7f18fe34 and wlan[32]=221 and wlan[33:4]&0xffffff = 0x18fe34 and wlan[37]=0x4'
     with open('/tmp/espnow', 'w') as outfile:
-        subprocess.run(['tcpdump', '-i' , 'wlan0', f'"{pf}"'], stdout=outfile, stderr=subprocess.STDOUT, text=True)
+        subprocess.run(['tcpdump', '-XX', '-i' , 'wlan0', pf], stdout=outfile, stderr=subprocess.STDOUT, text=True)
 
 if __name__ == '__main__':
     main()
