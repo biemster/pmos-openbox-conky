@@ -8,7 +8,7 @@ conky.config = {
 	alignment = 'top_left',
 	gap_x = 3,
 	gap_y = 0,
-	minimum_width = '200',
+	minimum_width = 200,
 
 	use_xft = true,
 	font = 'Ubuntu:size=18',
@@ -41,6 +41,8 @@ conky.config = {
 	short_units = true,
 	double_buffer = true,
 	update_interval = 1,
+
+	template0 = [[wlan0]]
 };
 
 conky.text = [[
@@ -50,6 +52,50 @@ ${voffset -20}$alignr$color1${font Cantarell:size=100}${time %e}$font
 $color${voffset -20}$color1${font Cantarell:size=54}${time %b}$font\
 ${voffset -3} $color${font Cantarell:size=60} ${time %Y}$font
 #
+${voffset 8}${goto 18}${color}ALARM ${color1}not set${alignr}${color}--:--
+${voffset -2}$color2$alignr${execbar 10,500 echo 100}${voffset -2}
+#
 ${voffset 8}${goto 18}${color}BATTERY ${color1}${exec cat /sys/class/power_supply/pmi8998-charger/status}${alignr}${color}${battery_percent bq27411-0}%
 ${voffset -2}$color2$alignr${battery_bar 10,500 bq27411-0}${voffset -2}
+#
+${voffset 8}${goto 18}${color}IDLE ${alignr}${color}${exec python -c"print($(xprintidle) //1000)"}/10
+${voffset -2}$color2$alignr${execbar 10,500 python -c"print(100 - ($(xprintidle) /100))"}${voffset -2}
+#
+${if_existing /tmp/ui_statemachine full}\
+${color}CPU$alignr$cpu%
+${voffset -2}$color2${cpubar cpu1 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu2 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu3 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu4 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu5 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu6 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu7 10,500 -l -t}${voffset -2}
+${voffset -2}$color2${cpubar cpu8 10,500 -l -t}${voffset -2}
+${goto 18}$font$color0${top name 1}${alignr}$color${top cpu 1}%
+${goto 18}$color0${top name 2}$alignr$color${top cpu 2}%
+${goto 18}$color0${top name 3}$alignr$color${top cpu 3}%
+#
+${voffset 8}${goto 18}${color}MEM${alignr}$legacymem / $memmax
+${voffset -2}$color2$alignr${membar 10,500 -l -t}${voffset -2}
+${goto 18}$color0${top_mem name 1}$alignr$color${top_mem mem_res 1}
+${goto 18}$color0${top_mem name 2}$alignr$color${top_mem mem_res 2}
+${goto 18}$color0${top_mem name 3}$alignr$color${top_mem mem_res 3}
+#
+${voffset 8}${goto 18}${color}DISK${alignr}$fs_used / $fs_size
+${voffset -2}$color2$alignr${fs_bar 10,500}${voffset -2}
+#
+${execp ./phone.py --gps | awk '{printf "${voffset 8}${goto 18}${color}GPS${alignr}acc: %dm\n${voffset -2}$color2$alignr${execbar 10,500 echo %d}${voffset -2}", $7, $7}'}
+${execp ./phone.py --gps | awk '{printf "${goto 18}$alignr${color0}view${color}%s ${color0}fix${color}%s ${color0}utc${color}%s ${color0}lat${color}%s ${color0}lon${color}%s", $2, $3, $4, $5, $6}'}
+#
+${voffset 8}${goto 18}${color}NET
+${color}Device ${alignr}${color0}$template0
+${color}IP ${alignr}${color0}${addr $template0}
+${color}Public IP ${alignr}${color0}${texeci 30 curl checkip.amazonaws.com}
+${color}Ping 1.1.1.1 ${alignr}${color0}${texeci 3 ping -c1 -W1 1.1.1.1 | grep -o 'time=.*' | cut -c6-}
+${color}Download $color0${downspeed $template0} ${alignr}${color0}${upspeed $template0}${color} Upload
+#${color2}${downspeedgraph $template0 50,220 -t} ${alignr} ${upspeedgraph $template0 50,220 -t}
+${color}Total Down ${color0}${totaldown $template0} ${alignr}${color0}${totalup $template0}${color} Total Up
+${color0}${hr}
+#${texeci 3 netstat -ept | grep ESTAB | awk '{print $9}' | cut -d/ -f2 | sort | uniq -c | sort -nr}
+${endif}
 ]];

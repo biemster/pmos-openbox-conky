@@ -6,8 +6,7 @@ conky.config = {
 	own_window_hints = 'undecorated,below,sticky,skip_taskbar,skip_pager',
     
 	alignment = 'top_right',
-	gap_x = 3,
-	gap_y = 100,
+	gap_y = 50,
 	minimum_width = 500,
 	maximum_width = 500,
 
@@ -31,8 +30,6 @@ conky.config = {
 
 	draw_borders = false,
 	stippled_borders = 0,
-	border_inner_margin = 8,
-	border_outer_margin = 8,
 	border_width = 1,
 	draw_graph_borders = true,
 
@@ -42,14 +39,16 @@ conky.config = {
 	short_units = true,
 	double_buffer = true,
 	update_interval = 1,
-
-	template0 = [[qmapmux0.0]]
 };
 
 conky.text = [[
 ${if_existing /tmp/ui_statemachine full}\
-${color}HOME${alignr}5 new
-${voffset -2}$color2$alignr${execbar 10,500 echo "5/0.09" | bc -l}${voffset -2}
+${color}    HOME${alignr}5 new
+$color2$alignr${execbar 10,500 echo "5/0.10" | bc -l}
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Topic: Event summary from MQTT or ESPNOW
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Topic: Event summary from MQTT or ESPNOW
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Topic: Event summary from MQTT or ESPNOW
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
@@ -57,26 +56,52 @@ ${goto 50}Topic: Event summary from MQTT or ESPNOW
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Topic: Event summary from MQTT or ESPNOW
 ${color}SMS${alignr}0 new
-${voffset -2}$color2$alignr${execbar 10,500 echo "0/0.09" | bc -l}${voffset -2}
+$color2$alignr${execbar 10,500 echo "0/0.10" | bc -l}
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
 ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color}WhatsApp${alignr}1 new
-${voffset -2}$color2$alignr${execbar 10,500 echo "1/0.09" | bc -l}${voffset -2}
+$color2$alignr${execbar 10,500 echo "1/0.10" | bc -l}
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color}iMessage${alignr}3 new
-${voffset -2}$color2$alignr${execbar 10,500 echo "3/0.09" | bc -l}${voffset -2}
+$color2$alignr${execbar 10,500 echo "3/0.10" | bc -l}
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color}GMail${alignr}1 new
+$color2$alignr${execbar 10,500 echo "1/0.10" | bc -l}
+${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
+${goto 50}Sender: First words of the message
+${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${endif}
 ]];

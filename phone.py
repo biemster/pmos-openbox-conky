@@ -1,8 +1,5 @@
 #!/usr/bin/env python
-import os
 import argparse
-import evdev
-import asyncio
 import subprocess
 from time import sleep
 
@@ -14,7 +11,15 @@ def main():
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
     parser.add_argument('-u', '--swipeup', help='Execute swipe up action', action='store_true')
     parser.add_argument('-d', '--swipedown', help='Execute swipe down action', action='store_true')
+    parser.add_argument('--ui-full', help='Show full conky UI on desktop', action='store_true')
+    parser.add_argument('--ui-minimal', help='Show minimal conky UI on desktop', action='store_true')
     parser.add_argument('--rumble', help='Rumble for <RUMBLE> milliseconds', type=int)
+    parser.add_argument('--screen-on', help='Turn on the screen', action='store_true')
+    parser.add_argument('--try-sleeping', help='Set wake lock if the screen is on, or if there is an SSH connection', action='store_true')
+    parser.add_argument('--opportunistic-sleep-enable', help='Enable opportunistic sleep', action='store_true')
+    parser.add_argument('--opportunistic-sleep-disable', help='Disable opportunistic sleep', action='store_true')
+    parser.add_argument('--wake-lock', help='Set phone.py wakelock', action='store_true')
+    parser.add_argument('--wake-unlock', help='Release phone.py wakelock', action='store_true')
     parser.add_argument('--gps', help='Retrieve all relevant info from GPS in easy format', action='store_true')
     parser.add_argument('--gpstime', help='Retrieve time from GPS and update system time', action='store_true')
     parser.add_argument('--gpsposition', help='Retrieve and store location from GPS', action='store_true')
@@ -31,7 +36,15 @@ def main():
     elif args.swiperight: swiperight()
     elif args.swipeup: swipedup()
     elif args.swipedown: swipedown()
+    elif args.ui_full: ui_full()
+    elif args.ui_minimal: ui_minimal()
     elif args.rumble: rumble(args.rumble)
+    elif args.screen_on: screen_on()
+    elif args.try_sleeping: opportunistic_sleep()
+    elif args.opportunistic_sleep_enable: opportunistic_sleep_enable()
+    elif args.opportunistic_sleep_disable: opportunistic_sleep_disable()
+    elif args.wake_lock: opportunistic_sleep_wakelock()
+    elif args.wake_unlock: opportunistic_sleep_wakeunlock()
     elif args.gps: gps()
     elif args.gpstime: gpstime()
     elif args.gpsposition: gpsposition()
@@ -42,9 +55,12 @@ def main():
     elif args.espnow: espnow()
 
 def notification(msg):
+    screen_on()
     subprocess.run(['sudo', '-u', '#10000', 'dunstify', msg])
 
 def eventlistener():
+    import evdev
+    import asyncio
     tristate = evdev.InputDevice('/dev/input/by-path/platform-alert-slider-event')
     vol = evdev.InputDevice('/dev/input/by-path/platform-gpio-keys-event')
     pwr = evdev.InputDevice('/dev/input/by-path/platform-c440000.spmi-platform-c440000.spmi:pmic@0:pon@800:pwrkey-event') # acpid will also react on the power button
@@ -52,7 +68,9 @@ def eventlistener():
     async def handle_events(device):
         async for event in device.async_read_loop():
             try:
-                print(device.path, evdev.categorize(event), sep=': ')
+                #print(device.path, evdev.categorize(event), sep=': ')
+                if '(KEY_POWER), down' in evdev.categorize(event):
+                    opportunistic_sleep_wakelock()
             except KeyError:
                 print(device.path, event, sep=': ')
 
@@ -77,6 +95,12 @@ def swipedown():
 def rumble(millis):
     print(f'trying to rumble {millis}ms')
 
+def ui_full():
+    subprocess.run(['sudo', '-u', '#10000', 'sed', '-i', 's/minimal/full/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def ui_minimal():
+    subprocess.run(['sudo', '-u', '#10000', 'sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 def GPGGA():
     loc = subprocess.check_output(['mmcli', '-m', '0', '--location-get', '--output-keyvalue']).decode().split('\n')
     sentence = ''
@@ -98,31 +122,44 @@ def gpsposition():
 
 def gps():
     loc = subprocess.check_output(['mmcli', '-m', '0', '--location-get', '--output-keyvalue']).decode().split('\n')
-    gpsdata = {}
+    gpsdata = {'view': 0, 'fix': 0, 'acc': 10}
     for kv in loc:
+        val = kv[kv.find(': ') +2:]
         if 'gps.utc' in kv:
-            gpsdata['utc'] = int(float(kv[kv.find(': ') +2:]))
+            gpsdata['utc'] = int(float(val)) if val != '--' else 0
         elif 'gps.longitude' in kv:
-            gpsdata['lon'] = float(kv[kv.find(': ') +2:])
+            gpsdata['lon'] = float(val) if val != '--' else 0.0
         elif 'gps.latitude' in kv:
-            gpsdata['lat'] = float(kv[kv.find(': ') +2:])
+            gpsdata['lat'] = float(val) if val != '--' else 0.0
         elif 'gps.altitude' in kv:
-            gpsdata['alt'] = int(float(kv[kv.find(': ') +2:]))
+            gpsdata['alt'] = int(float(val)) if val != '--' else 0
+        elif 'GPGSV' in kv:
+            sentence = kv[kv.find('$GPGSV'):]
+            gpsdata['view'] = float(sentence[3])
         elif 'GPGGA' in kv:
             sentence = kv[kv.find('$GPGGA'):]
+            gpsdata['fix'] = float(sentence[7])
             gpsdata['acc'] = float(sentence[8])
-    print(f'gps: {gpsdata['utc']} {gpsdata['lat']:.3f} {gpsdata['lon']:.3f} {gpsdata['acc']} {gpsdata['alt']}')
+    print(f'gps: {gpsdata['view']} {gpsdata['fix']} {gpsdata['utc']} {gpsdata['lat']:.3f} {gpsdata['lon']:.3f} {gpsdata['acc']} {gpsdata['alt']}')
 
 def screen_on():
     # screensaver reset resets the idle timer, dpms force on let's dpms know the screen is on again
-    subprocess.run(['xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(['xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['sudo', '-u', '#10000', 'xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['sudo', '-u', '#10000', 'xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def opportunistic_sleep_lock():
+def opportunistic_sleep_enable():
+    with open('/sys/power/autosleep','w') as f:
+        f.write('mem')
+
+def opportunistic_sleep_disable():
+    with open('/sys/power/autosleep','w') as f:
+        f.write('off')
+
+def opportunistic_sleep_wakelock(timeout=None):
     with open('/sys/power/wake_lock','w') as f:
-        f.write('phone.py')
+        f.write('phone.py' + (f' {str(int(timeout * 1e9))}' if timeout else ''))
 
-def opportunistic_sleep_unlock():
+def opportunistic_sleep_wakeunlock():
     with open('/sys/power/wake_unlock','w') as f:
         f.write('phone.py')
 
@@ -138,13 +175,12 @@ def opportunistic_sleep():
                 ssh_connection_active = True
                 break
 
-        if not screen_off or ssh_connection_active:
-            sleep(3)
-        else:
-            break
-    opportunistic_sleep_unlock()
+        if screen_off and not ssh_connection_active:
+            opportunistic_sleep_wakeunlock()
+        sleep(3)
 
 def wlan0_modeset(mode='managed'):
+    import os
     if os.getuid() != 0:
         print('wlan0_modeset should be run as root, so do what you just did with sudo')
     else:

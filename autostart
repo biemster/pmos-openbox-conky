@@ -9,7 +9,7 @@ xset dpms 10 10 10
 # conkies
 /usr/bin/conky -c $HOME/conkies/left.conkyrc
 /usr/bin/conky -c $HOME/conkies/right.conkyrc
-#/usr/bin/conky -c $HOME/conkies/bottom.conkyrc
+/usr/bin/conky -c $HOME/conkies/bottom.conkyrc
 
 # gesture recognition
 lisgd -d /dev/input/event4 \
@@ -18,5 +18,10 @@ lisgd -d /dev/input/event4 \
 	-g "1,DU,*,*,R,$HOME/phone.py -u" \
 	-g "1,UD,*,*,R,$HOME/phone.py -d" &
 
-# controller
-$HOME/phone.py -e > /tmp/phone_ctrl.log &
+# sleep control
+$HOME/phone.py --opportunistic-sleep-wakelock
+#$HOME/phone.py --opportunistic-sleep-enable
+$HOME/phone.py --try-sleeping &
+
+# event listener
+$HOME/phone.py --eventlistener &
