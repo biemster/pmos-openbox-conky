@@ -21,7 +21,7 @@ vim,git,conky,python3,py3-evdev,py3-evdev-pyc,py3-dbus,dbus-x11,modemmanager,iw,
 - [x] GPS
 - [x] NFC
 - [ ] WhatsApp, iMessage
-- [ ] Power management
+- [x] Power management
 - [ ] Access to internal home network
 
 ## Basic UI, notifications and gestures
@@ -84,11 +84,13 @@ They will be set up to write new messages to a separate SQLite database, from wh
 Support for sending messages will be provided by a web app.
 
 ## Power management
-https://wiki.postmarketos.org/wiki/Runtime_Power_Management
-
 https://wiki.postmarketos.org/wiki/Opportunistic_Sleep
 
 https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-power
+
+The `90-autosleep` file needs to be copied to `/etc/sudoers.d/`, then the `phone.py` commands relating to opportunistic sleep will work.
+The phone will not go to sleep if an ssh connection is active, or when the screen is on.
+A detailed description on this will be added here, as some more logic will be added like regularly waking up to check for messages.
 
 ```bash
 $ ls /sys/class/power_supply/*
@@ -119,3 +121,4 @@ reboot
 
 ## Wishlist
 - Camera: https://gitlab.com/sdm845-mainline/linux/-/issues/21
+- USB host (or whatever it's called nowadays, I want to be able to power and connect to an ESP32 or RP2040)

@@ -69,7 +69,7 @@ def eventlistener():
         async for event in device.async_read_loop():
             try:
                 #print(device.path, evdev.categorize(event), sep=': ')
-                if '(KEY_POWER), down' in evdev.categorize(event):
+                if '(KEY_POWER), down' in str(evdev.categorize(event)):
                     opportunistic_sleep_wakelock()
             except KeyError:
                 print(device.path, event, sep=': ')
@@ -148,20 +148,16 @@ def screen_on():
     subprocess.run(['sudo', '-u', '#10000', 'xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_enable():
-    with open('/sys/power/autosleep','w') as f:
-        f.write('mem')
+    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_disable():
-    with open('/sys/power/autosleep','w') as f:
-        f.write('off')
+    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='off', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_wakelock(timeout=None):
-    with open('/sys/power/wake_lock','w') as f:
-        f.write('phone.py' + (f' {str(int(timeout * 1e9))}' if timeout else ''))
+    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/wake_lock'], text=True, input='phone.py' + (f' {int(timeout * 1e9)}' if timeout else ''), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_wakeunlock():
-    with open('/sys/power/wake_unlock','w') as f:
-        f.write('phone.py')
+    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/wake_unlock'], text=True, input='phone.py', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep():
     while True:
@@ -171,10 +167,12 @@ def opportunistic_sleep():
         netstat = subprocess.check_output(['netstat', '-tpn'], stderr=subprocess.DEVNULL).decode().split('\n')[2:]
         ssh_connection_active = False
         for connection in netstat:
-            if connection.split()[3].endswith(':22'):
+            c = connection.split()
+            if len(c) > 6 and c[3].endswith(':22') and c[5] == 'ESTABLISHED':
                 ssh_connection_active = True
                 break
 
+        print(screen_off, ssh_connection_active)
         if screen_off and not ssh_connection_active:
             opportunistic_sleep_wakeunlock()
         sleep(3)
