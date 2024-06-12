@@ -70,7 +70,7 @@ def eventlistener():
             try:
                 #print(device.path, evdev.categorize(event), sep=': ')
                 if '(KEY_POWER), down' in str(evdev.categorize(event)):
-                    opportunistic_sleep_wakelock()
+                    opportunistic_sleep_wakelock_toggle()
             except KeyError:
                 print(device.path, event, sep=': ')
 
@@ -158,6 +158,14 @@ def opportunistic_sleep_wakelock(timeout=None):
 
 def opportunistic_sleep_wakeunlock():
     subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/wake_unlock'], text=True, input='phone.py', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def opportunistic_sleep_wakelock_toggle():
+    with open('/sys/power/wake_lock') as f:
+        locks = f.read()
+        if 'phone.py' in locks:
+            opportunistic_sleep_wakeunlock()
+        else:
+            opportunistic_sleep_wakelock()
 
 def opportunistic_sleep():
     while True:
