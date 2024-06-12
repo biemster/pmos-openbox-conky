@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--wake-lock', help='Set phone.py wakelock', action='store_true')
     parser.add_argument('--wake-unlock', help='Release phone.py wakelock', action='store_true')
     parser.add_argument('--gps', help='Retrieve all relevant info from GPS in easy format', action='store_true')
+    parser.add_argument('--gps-enable', help='Enable GPS location in ModemManager', action='store_true')
     parser.add_argument('--gpstime', help='Retrieve time from GPS and update system time', action='store_true')
     parser.add_argument('--gpsposition', help='Retrieve and store location from GPS', action='store_true')
     parser.add_argument('--wlan0managed', help='Restart the wlan0 interface in managed mode', action='store_true')
@@ -46,6 +47,7 @@ def main():
     elif args.wake_lock: opportunistic_sleep_wakelock()
     elif args.wake_unlock: opportunistic_sleep_wakeunlock()
     elif args.gps: gps()
+    elif args.gps_enable: gps_enable()
     elif args.gpstime: gpstime()
     elif args.gpsposition: gpsposition()
     elif args.wlan0managed: wlan0_modeset('managed')
@@ -101,6 +103,10 @@ def ui_full():
 def ui_minimal():
     subprocess.run(['sudo', '-u', '#10000', 'sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+def gps_enable():
+    for gps_action in ['--location-enable-gps-raw', '--location-enable-gps-nmea', '--location-set-gps-refresh-rate=1']:
+        subprocess.run(['mmcli', '-m', '0', gps_action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 def GPGGA():
     loc = subprocess.check_output(['mmcli', '-m', '0', '--location-get', '--output-keyvalue']).decode().split('\n')
     sentence = ''
@@ -134,12 +140,12 @@ def gps():
         elif 'gps.altitude' in kv:
             gpsdata['alt'] = int(float(val)) if val != '--' else 0
         elif 'GPGSV' in kv:
-            sentence = kv[kv.find('$GPGSV'):]
-            gpsdata['view'] = float(sentence[3])
+            sentence = kv[kv.find('$GPGSV'):].split(',')
+            gpsdata['view'] = int(sentence[3] or gpsdata['view'])
         elif 'GPGGA' in kv:
-            sentence = kv[kv.find('$GPGGA'):]
-            gpsdata['fix'] = float(sentence[7])
-            gpsdata['acc'] = float(sentence[8])
+            sentence = kv[kv.find('$GPGGA'):].split(',')
+            gpsdata['fix'] = int(sentence[7] or gpsdata['fix'])
+            gpsdata['acc'] = float(sentence[8] or gpsdata['acc'])
     print(f'gps: {gpsdata['view']} {gpsdata['fix']} {gpsdata['utc']} {gpsdata['lat']:.3f} {gpsdata['lon']:.3f} {gpsdata['acc']} {gpsdata['alt']}')
 
 def screen_on():
