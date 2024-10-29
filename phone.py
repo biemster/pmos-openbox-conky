@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--ui-minimal', help='Show minimal conky UI on desktop', action='store_true')
     parser.add_argument('--rumble', help='Rumble for <RUMBLE> milliseconds', type=int)
     parser.add_argument('--screen-on', help='Turn on the screen', action='store_true')
-    parser.add_argument('--try-sleeping', help='Set wake lock if the screen is on, or if there is an SSH connection', action='store_true')
+    parser.add_argument('--try-sleeping', help='Go to s2idle if the screen is off and there is no incoming SSH connection', action='store_true')
     parser.add_argument('--opportunistic-sleep-enable', help='Enable opportunistic sleep', action='store_true')
     parser.add_argument('--opportunistic-sleep-disable', help='Disable opportunistic sleep', action='store_true')
     parser.add_argument('--wake-lock', help='Set phone.py wakelock', action='store_true')
@@ -41,7 +41,7 @@ def main():
     elif args.ui_minimal: ui_minimal()
     elif args.rumble: rumble(args.rumble)
     elif args.screen_on: screen_on()
-    elif args.try_sleeping: opportunistic_sleep()
+    elif args.try_sleeping: possibly_s2idle()
     elif args.opportunistic_sleep_enable: opportunistic_sleep_enable()
     elif args.opportunistic_sleep_disable: opportunistic_sleep_disable()
     elif args.wake_lock: opportunistic_sleep_wakelock()
@@ -153,6 +153,9 @@ def screen_on():
     subprocess.run(['sudo', '-u', '#10000', 'xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(['sudo', '-u', '#10000', 'xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+def s2idle_start():
+    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/state'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 def opportunistic_sleep_enable():
     subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -173,22 +176,28 @@ def opportunistic_sleep_wakelock_toggle():
         else:
             opportunistic_sleep_wakelock()
 
+def is_screen_off():
+    xsetq = subprocess.check_output(['xset', 'q']).decode().split('\n')[-2]
+    return 'Monitor is Off' in xsetq
+
+def ssh_connection_active():
+    netstat = subprocess.check_output(['netstat', '-tpn'], stderr=subprocess.DEVNULL).decode().split('\n')[2:]
+    for connection in netstat:
+        c = connection.split()
+        if len(c) > 6 and c[3].endswith(':22') and c[5] == 'ESTABLISHED':
+            return True
+    return False
+
 def opportunistic_sleep():
     while True:
-        xsetq = subprocess.check_output(['xset', 'q']).decode().split('\n')[-2]
-        screen_off = 'Monitor is Off' in xsetq
-
-        netstat = subprocess.check_output(['netstat', '-tpn'], stderr=subprocess.DEVNULL).decode().split('\n')[2:]
-        ssh_connection_active = False
-        for connection in netstat:
-            c = connection.split()
-            if len(c) > 6 and c[3].endswith(':22') and c[5] == 'ESTABLISHED':
-                ssh_connection_active = True
-                break
-
-        print(screen_off, ssh_connection_active)
-        if screen_off and not ssh_connection_active:
+        if is_screen_off() and not ssh_connection_active():
             opportunistic_sleep_wakeunlock()
+        sleep(3)
+
+def possibly_s2idle():
+    while True:
+        if is_screen_off() and not ssh_connection_active():
+            s2idle_start()
         sleep(3)
 
 def wlan0_modeset(mode='managed'):

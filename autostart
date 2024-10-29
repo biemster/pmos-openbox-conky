@@ -3,8 +3,8 @@
 # init UI state machine
 echo "full;nocall" > /tmp/ui_statemachine
 
-# display off in 10s
-xset dpms 10 10 10
+# display off in 15s
+xset dpms 15 15 15
 
 # conkies
 /usr/bin/conky -c $HOME/conkies/left.conkyrc
@@ -22,6 +22,8 @@ lisgd -d /dev/input/event4 \
 $HOME/phone.py --eventlistener &
 
 # sleep control
-$HOME/phone.py --opportunistic-sleep-wakelock
-$HOME/phone.py --opportunistic-sleep-enable
+# To do autosleep, uncomment the first to lines to properly initialize it
+# Currently the --try-sleeping method decides when to sleep, and initiates it
+#$HOME/phone.py --opportunistic-sleep-wakelock
+#$HOME/phone.py --opportunistic-sleep-enable
 $HOME/phone.py --try-sleeping &
