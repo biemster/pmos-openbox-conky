@@ -21,6 +21,7 @@ vim,git,conky,python3,py3-evdev,py3-evdev-pyc,py3-dbus,dbus-x11,modemmanager,iw,
 - [x] GPS
 - [x] NFC
 - [ ] WhatsApp, Gmail
+- [ ] Alarm
 - [x] Power management
 - [ ] Access to internal home network
 
@@ -82,6 +83,12 @@ $ mmcli -m 0 --location-get
 WhatsApp will be connected through `whatsmeow`, SMS through modemmanager and GMail through some python binding like https://github.com/jeremyephron/simplegmail
 They will be set up to write new messages to a separate SQLite database, from which `phone.py` pulls the latest entries.
 Support for sending messages will be provided by a web app.
+
+## Alarm
+The RTC can be used to wake up the phone for an alarm. It should be relatively straightforward to implement an alarm clock with this.
+Since pmOS probably needs to be on the charger every night, it's probably a good idea to implement this such that when the charger is
+plugged, the battery get's charged to max 80% or something and the display will show the current time (and time until alarm).
+So this will be an extra state in the gui state machine.
 
 ## Power management
 The doas config `90-autosleep.conf` should be copied to `/etc/doas.d/`
