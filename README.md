@@ -20,7 +20,7 @@ vim,git,conky,python3,py3-evdev,py3-evdev-pyc,py3-dbus,dbus-x11,modemmanager,iw,
 - [x] Sensors
 - [x] GPS
 - [x] NFC
-- [ ] WhatsApp, iMessage
+- [ ] WhatsApp, Gmail
 - [x] Power management
 - [ ] Access to internal home network
 
@@ -78,20 +78,25 @@ $ mmcli -m 0 --location-inject-assistance-data=/path/to/downloaded/file
 $ mmcli -m 0 --location-get
 ```
 
-## SMS, WhatsApp, iMessage
-WhatsApp will be connected through `whatsmeow`, iMessage when `pypush` works again.
+## SMS, WhatsApp, GMail
+WhatsApp will be connected through `whatsmeow`, SMS through modemmanager and GMail through some python binding like https://github.com/jeremyephron/simplegmail
 They will be set up to write new messages to a separate SQLite database, from which `phone.py` pulls the latest entries.
 Support for sending messages will be provided by a web app.
 
 ## Power management
-https://wiki.postmarketos.org/wiki/Opportunistic_Sleep
+The phone will suspend after 15 seconds of idle when `phone.py` calls `loginctl suspend`. To wake up for incoming calls/text the following wake irq
+has to be enabled:
+```
+echo enabled | doas tee /sys/bus/rpmsg/devices/4080000.remoteproc:glink-edge.IPCRTR.-1.-1/power/wakeup
+```
 
-https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-power
+There are currently two issues with this:
+1. Modemmanager does not yet support disabling unsolicited events during suspend, so it will wake up the phone very quickly again with a
+network update. A patch for 1.22.0 is available in this repo to add this feature, and an MR is here: https://gitlab.freedesktop.org/mobile-broadband/ModemManager/-/issues/927
+2. When wifi is connected, it will spam the QIPCRTR wake irq a lot as well, so sleeping will not be possible. This has to be fixed in
+the `ath10k` driver and this work has started as well but no MR yet.
 
-The `90-autosleep` file needs to be copied to `/etc/sudoers.d/`, then the `phone.py` commands relating to opportunistic sleep will work.
-The phone will not go to sleep if an ssh connection is active, or when the screen is on.
-A detailed description on this will be added here, as some more logic will be added like regularly waking up to check for messages.
-
+The phone.py script can monitor and regulate the charging rate by monitoring and writing to one of the following:
 ```bash
 $ ls /sys/class/power_supply/*
 $ cat /sys/class/power_supply/bq27411-0/capacity
@@ -101,6 +106,7 @@ $ cat /sys/class/power_supply/bq27411-0/charge_now
 $ cat /sys/class/power_supply/pmi8998-charger/status 
 $ cat /sys/class/power_supply/pmi8998-charger/current_now
 ```
+This still has to be implemented.
 
 ## Access to internal home network
 - wireguard: https://gist.github.com/insdavm/b1034635ab23b8839bf957aa406b5e39
