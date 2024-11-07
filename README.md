@@ -84,6 +84,7 @@ They will be set up to write new messages to a separate SQLite database, from wh
 Support for sending messages will be provided by a web app.
 
 ## Power management
+The doas config `90-autosleep.conf` should be copied to `/etc/doas.d/`
 The phone will suspend after 15 seconds of idle when `phone.py` calls `loginctl suspend`. To wake up for incoming calls/text the following wake irq
 has to be enabled:
 ```

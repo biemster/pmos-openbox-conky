@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import argparse
 import subprocess
 from time import sleep
@@ -14,6 +15,9 @@ def main():
     parser.add_argument('--ui-minimal', help='Show minimal conky UI on desktop', action='store_true')
     parser.add_argument('--rumble', help='Rumble for <RUMBLE> milliseconds', type=int)
     parser.add_argument('--screen-on', help='Turn on the screen', action='store_true')
+    parser.add_argument('--notification', help='Display notification')
+    parser.add_argument('--enable-modem-wakeirq', help='Enable modem QIPCRTR wake irq', action='store_true')
+    parser.add_argument('--disable-modem-wakeirq', help='Disable modem QIPCRTR wake irq', action='store_true')
     parser.add_argument('--try-sleeping', help='Go to s2idle if the screen is off and there is no incoming SSH connection', action='store_true')
     parser.add_argument('--opportunistic-sleep-enable', help='Enable opportunistic sleep', action='store_true')
     parser.add_argument('--opportunistic-sleep-disable', help='Disable opportunistic sleep', action='store_true')
@@ -39,6 +43,9 @@ def main():
     elif args.ui_minimal: ui_minimal()
     elif args.rumble: rumble(args.rumble)
     elif args.screen_on: screen_on()
+    elif args.notification: notification(args.notification)
+    elif args.enable_modem_wakeirq: enable_modem_wakeirq()
+    elif args.disable_modem_wakeirq: disable_modem_wakeirq()
     elif args.try_sleeping: possibly_s2idle()
     elif args.opportunistic_sleep_enable: opportunistic_sleep_enable()
     elif args.opportunistic_sleep_disable: opportunistic_sleep_disable()
@@ -56,7 +63,11 @@ def main():
 
 def notification(msg):
     screen_on()
-    subprocess.run(['sudo', '-u', '#10000', 'dunstify', msg])
+    doas_10000 = []
+    my_env = {'DISPLAY': ':0'}
+    if os.getuid() == 0:
+        doas_10000 = ['doas', '-u', '10000']
+    subprocess.run(doas_10000 + ['dunstify', msg], env={**os.environ, **my_env})
 
 def eventlistener():
     import evdev
@@ -70,7 +81,7 @@ def eventlistener():
             try:
                 #print(device.path, evdev.categorize(event), sep=': ')
                 if '(KEY_POWER), down' in str(evdev.categorize(event)):
-                    opportunistic_sleep_wakelock_toggle()
+                    wakeup_from_powerbutton()
             except KeyError:
                 print(device.path, event, sep=': ')
 
@@ -95,11 +106,23 @@ def swipedown():
 def rumble(millis):
     print(f'trying to rumble {millis}ms')
 
+def wakeup_from_powerbutton():
+    screen_on()
+
+def wakeup_from_modem():
+    screen_on()
+
 def ui_full():
-    subprocess.run(['sudo', '-u', '#10000', 'sed', '-i', 's/minimal/full/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    doas_10000 = []
+    if os.getuid() == 0:
+        doas_10000 = ['doas', '-u', '10000']
+    subprocess.run(doas_10000 + ['sed', '-i', 's/minimal/full/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def ui_minimal():
-    subprocess.run(['sudo', '-u', '#10000', 'sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    doas_10000 = []
+    if os.getuid() == 0:
+        doas_10000 = ['doas', '-u', '10000']
+    subprocess.run(doas_10000 + ['sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def gps_enable():
     for gps_action in ['--location-enable-gps-raw', '--location-enable-gps-nmea', '--location-set-gps-refresh-rate=1']:
@@ -148,23 +171,34 @@ def gps():
 
 def screen_on():
     # screensaver reset resets the idle timer, dpms force on let's dpms know the screen is on again
-    subprocess.run(['sudo', '-u', '#10000', 'xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(['sudo', '-u', '#10000', 'xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    doas_10000 = []
+    if os.getuid() == 0:
+        doas_10000 = ['doas', '-u', '10000']
+    subprocess.run(doas_10000 + ['xset', '-d', ':0', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(doas_10000 + ['xset', '-d', ':0', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def enable_modem_wakeirq():
+    modem_wakeirq = '/sys/bus/rpmsg/devices/4080000.remoteproc:glink-edge.IPCRTR.-1.-1/power/wakeup'
+    subprocess.run(['doas', '/usr/bin/tee', modem_wakeirq], text=True, input='enabled', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def disable_modem_wakeirq():
+    modem_wakeirq = '/sys/bus/rpmsg/devices/4080000.remoteproc:glink-edge.IPCRTR.-1.-1/power/wakeup'
+    subprocess.run(['doas', '/usr/bin/tee', modem_wakeirq], text=True, input='disabled', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def s2idle_start():
-    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/state'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/loginctl', 'suspend'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_enable():
-    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_disable():
-    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='off', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='off', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_wakelock(timeout=None):
-    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/wake_lock'], text=True, input='phone.py' + (f' {int(timeout * 1e9)}' if timeout else ''), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/power/wake_lock'], text=True, input='phone.py' + (f' {int(timeout * 1e9)}' if timeout else ''), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_wakeunlock():
-    subprocess.run(['sudo', '/usr/bin/tee', '/sys/power/wake_unlock'], text=True, input='phone.py', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/power/wake_unlock'], text=True, input='phone.py', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_wakelock_toggle():
     with open('/sys/power/wake_lock') as f:
@@ -175,7 +209,7 @@ def opportunistic_sleep_wakelock_toggle():
             opportunistic_sleep_wakelock()
 
 def is_screen_off():
-    xsetq = subprocess.check_output(['xset', 'q']).decode().split('\n')[-2]
+    xsetq = subprocess.check_output(['xset', '-d', ':0', 'q']).decode().split('\n')[-2]
     return 'Monitor is Off' in xsetq
 
 def ssh_connection_active():
@@ -199,9 +233,8 @@ def possibly_s2idle():
         sleep(3)
 
 def wlan0_modeset(mode='managed'):
-    import os
     if os.getuid() != 0:
-        print('wlan0_modeset should be run as root, so do what you just did with sudo')
+        print('wlan0_modeset should be run as root, so do what you just did with doas')
     else:
         modes = {'managed': ('start', b'\x00', 'frame_mode=1'), 'monitor': ('stop', b'\x04', 'frame_mode=0')}
 
