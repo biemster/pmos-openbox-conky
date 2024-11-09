@@ -3,6 +3,9 @@
 # init UI state machine
 echo "full;nocall" > /tmp/ui_statemachine
 
+# init logging
+echo "--- $(date) starting UI ---" > /tmp/logging
+
 # display off in 15s
 xset dpms 15 15 15
 

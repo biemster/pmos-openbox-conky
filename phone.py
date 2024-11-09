@@ -3,6 +3,9 @@ import os
 import argparse
 import subprocess
 from time import sleep
+from datetime import datetime
+
+os.putenv('DISPLAY', ':0')
 
 def main():
     parser = argparse.ArgumentParser()
@@ -64,10 +67,14 @@ def main():
 def notification(msg):
     screen_on()
     doas_10000 = []
-    my_env = {'DISPLAY': ':0'}
     if os.getuid() == 0:
         doas_10000 = ['doas', '-u', '10000']
-    subprocess.run(doas_10000 + ['dunstify', msg], env={**os.environ, **my_env})
+    subprocess.run(doas_10000 + ['dunstify', msg])
+
+def log(msg):
+    with open("/tmp/logging", "a") as f:
+        f.write(f'{datetime.now()} {msg}\n')
+    print(msg)
 
 def eventlistener():
     import evdev
@@ -79,11 +86,11 @@ def eventlistener():
     async def handle_events(device):
         async for event in device.async_read_loop():
             try:
-                #print(device.path, evdev.categorize(event), sep=': ')
-                if '(KEY_POWER), down' in str(evdev.categorize(event)):
-                    wakeup_from_powerbutton()
+                log(f'{device.path}: {evdev.categorize(event)}')
+                if '(KEY_POWER), up' in str(evdev.categorize(event)):
+                    powerbutton_press()
             except KeyError:
-                print(device.path, event, sep=': ')
+                log(f'{device.path}: {event}')
 
     for device in tristate, vol, pwr:
         asyncio.ensure_future(handle_events(device))
@@ -104,13 +111,16 @@ def swipedown():
     notification('swiped down')
 
 def rumble(millis):
-    print(f'trying to rumble {millis}ms')
+    log(f'trying to rumble {millis}ms')
 
 def wakeup_from_powerbutton():
     screen_on()
 
 def wakeup_from_modem():
     screen_on()
+
+def powerbutton_press():
+    suspend_restart_powerdown_modal()
 
 def ui_full():
     doas_10000 = []
@@ -124,6 +134,49 @@ def ui_minimal():
         doas_10000 = ['doas', '-u', '10000']
     subprocess.run(doas_10000 + ['sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+def suspend_restart_powerdown_modal():
+    import tkinter
+    from tkinter import ttk
+    import sv_ttk
+
+    root = tkinter.Tk()
+    root.overrideredirect(True)  # remove window decorations, including title bar
+
+    def suspend_clicked():
+        log("going to suspend")
+        s2idle_start();
+        root.destroy()
+
+    def reboot_clicked():
+        log("going to reboot")
+        reboot()
+        root.destroy()
+
+    def poweroff_clicked():
+        log("going to power off")
+        poweroff()
+        root.destroy()
+
+    def cancel_clicked():
+        root.destroy()
+
+    ttk.Button(root, text="⏸", command=suspend_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="↻", command=reboot_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="⏻", command=poweroff_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="C", command=cancel_clicked, style='Bold.TButton', width=2).pack()
+
+    sv_ttk.set_theme("dark")
+    bStyle = ttk.Style()
+    bStyle.configure('Bold.TButton', font =('Curier','72','bold'))
+
+    # place on the right and close to the power button
+    root.update_idletasks()
+    w = root.winfo_width()
+    h = root.winfo_height()
+    ws = root.winfo_screenwidth()
+    root.geometry(f'{w}x{h}+{ws-w}+600')
+    root.mainloop()
+
 def gps_enable():
     for gps_action in ['--location-enable-gps-raw', '--location-enable-gps-nmea', '--location-set-gps-refresh-rate=1']:
         subprocess.run(['mmcli', '-m', '0', gps_action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -136,16 +189,16 @@ def GPGGA():
             sentence = kv[kv.find('$GPGGA'):]
             break
     else:
-        print('$GPGGA sentence not found, maybe GPS has no fix yet?')
+        log('$GPGGA sentence not found, maybe GPS has no fix yet?')
     return sentence
 
 def gpstime():
     sentence = GPGGA().split(',')
-    print(sentence[1])
+    log(sentence[1])
 
 def gpsposition():
     sentence = GPGGA().split(',')
-    print(sentence[2:6])
+    log(sentence[2:6])
 
 def gps():
     loc = subprocess.check_output(['mmcli', '-m', '0', '--location-get', '--output-keyvalue']).decode().split('\n')
@@ -208,11 +261,18 @@ def opportunistic_sleep_wakelock_toggle():
         else:
             opportunistic_sleep_wakelock()
 
+def poweroff():
+    subprocess.run(['doas', '/usr/bin/loginctl', 'poweroff'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def reboot():
+    subprocess.run(['doas', '/usr/bin/loginctl', 'reboot'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 def is_screen_off():
     xsetq = subprocess.check_output(['xset', '-d', ':0', 'q']).decode().split('\n')[-2]
     return 'Monitor is Off' in xsetq
 
 def ssh_connection_active():
+    # this is actually done by sleep-inhibitor already
     netstat = subprocess.check_output(['netstat', '-tpn'], stderr=subprocess.DEVNULL).decode().split('\n')[2:]
     for connection in netstat:
         c = connection.split()
@@ -234,7 +294,7 @@ def possibly_s2idle():
 
 def wlan0_modeset(mode='managed'):
     if os.getuid() != 0:
-        print('wlan0_modeset should be run as root, so do what you just did with doas')
+        log('wlan0_modeset should be run as root, so do what you just did with doas')
     else:
         modes = {'managed': ('start', b'\x00', 'frame_mode=1'), 'monitor': ('stop', b'\x04', 'frame_mode=0')}
 

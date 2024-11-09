@@ -79,18 +79,6 @@ ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
 ${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
 ${goto 50}Sender: First words of the message
-${color}iMessage${alignr}3 new
-$color2$alignr${execbar 10,500 echo "3/0.10" | bc -l}
-${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
-${goto 50}Sender: First words of the message
-${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
-${goto 50}Sender: First words of the message
-${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
-${goto 50}Sender: First words of the message
-${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
-${goto 50}Sender: First words of the message
-${color0}-${goto 50}${color0}20 Feb 2023, 14:37:12
-${goto 50}Sender: First words of the message
 ${color}GMail${alignr}1 new
 $color2$alignr${execbar 10,500 echo "1/0.10" | bc -l}
 ${color}+${goto 50}${color0}20 Feb 2023, 14:37:12
