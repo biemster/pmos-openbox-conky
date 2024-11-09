@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--wlan0-monitor', help='Restart the wlan0 interface in monitor mode', action='store_true')
     parser.add_argument('--wifi-connect', help='Reconnect to WiFi AP already known by NM')
     parser.add_argument('--wifi-disconnect', help='Disconnect WiFi', action='store_true')
+    parser.add_argument('--wifi-off', help='Turn off WiFi', action='store_true')
     parser.add_argument('--espnow', help='Listen for ESPNOW frames on channel 1', action='store_true')
     args = parser.parse_args()
 
@@ -62,6 +63,7 @@ def main():
     elif args.wlan0_monitor: wlan0_modeset('monitor')
     elif args.wifi_connect: wificonnect(args.wifi_connect)
     elif args.wifi_disconnect: wifidisconnect()
+    elif args.wifi_off: wifi_off()
     elif args.espnow: espnow()
 
 def notification(msg):
@@ -322,13 +324,20 @@ def wificonnect(accesspoint):
     wifi = subprocess.check_output(['nmcli' ,'device', 'wifi']).decode().split('\n')
     if len(wifi) > 2:
         ssid1 = wifi[1].split()
-        if ssid[0] != '*' or ssid[2] != 'accesspoint':
+        if ssid[0] != '*' or ssid[2] != accesspoint:
             wifidisconnect()
             wlan0_modeset('managed')
             subprocess.run(['nmcli', 'device', 'wifi', 'connect', accesspoint], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def wifidisconnect():
     subprocess.run(['nmcli', 'device', 'disconnect', 'wlan0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def wifi_off():
+    wifi = subprocess.check_output(['nmcli' ,'device', 'wifi']).decode().split('\n')
+    if len(wifi) > 2:
+        ssid1 = wifi[1].split()
+        if ssid[0] == '*':
+            subprocess.run(['nmcli', 'connection', 'delete', 'id', ssid[2]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def espnow():
     wifidisconnect()
