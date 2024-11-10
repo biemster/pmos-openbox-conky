@@ -229,8 +229,8 @@ def screen_on():
     doas_10000 = []
     if os.getuid() == 0:
         doas_10000 = ['doas', '-u', '10000']
-    subprocess.run(doas_10000 + ['xset', '-d', ':0', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(doas_10000 + ['xset', '-d', ':0', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(doas_10000 + ['xset', 's', 'reset'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(doas_10000 + ['xset', 'dpms', 'force', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def enable_modem_wakeirq():
     modem_wakeirq = '/sys/bus/rpmsg/devices/4080000.remoteproc:glink-edge.IPCRTR.-1.-1/power/wakeup'
@@ -270,7 +270,7 @@ def reboot():
     subprocess.run(['doas', '/usr/bin/loginctl', 'reboot'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def is_screen_off():
-    xsetq = subprocess.check_output(['xset', '-d', ':0', 'q']).decode().split('\n')[-2]
+    xsetq = subprocess.check_output(['xset', 'q']).decode().split('\n')[-2]
     return 'Monitor is Off' in xsetq
 
 def ssh_connection_active():
