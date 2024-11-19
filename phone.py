@@ -168,7 +168,7 @@ def suspend_restart_powerdown_modal():
 
     sv_ttk.set_theme("dark")
     bStyle = ttk.Style()
-    bStyle.configure('Bold.TButton', font =('Curier','72','bold'))
+    bStyle.configure('Bold.TButton', font =('Noto','72','bold'))
 
     # place on the right and close to the power button
     root.update_idletasks()
