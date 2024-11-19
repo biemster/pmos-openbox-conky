@@ -145,24 +145,21 @@ def suspend_restart_powerdown_modal():
     root.overrideredirect(True)  # remove window decorations, including title bar
 
     def suspend_clicked():
-        log("going to suspend")
         s2idle_start();
         root.destroy()
 
     def reboot_clicked():
-        log("going to reboot")
         reboot()
         root.destroy()
 
     def poweroff_clicked():
-        log("going to power off")
         poweroff()
         root.destroy()
 
     def cancel_clicked():
         root.destroy()
 
-    ttk.Button(root, text="⏸", command=suspend_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="⏾", command=suspend_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="↻", command=reboot_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="⏻", command=poweroff_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="C", command=cancel_clicked, style='Bold.TButton', width=2).pack()
@@ -241,6 +238,7 @@ def disable_modem_wakeirq():
     subprocess.run(['doas', '/usr/bin/tee', modem_wakeirq], text=True, input='disabled', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def s2idle_start():
+    log("going to suspend")
     subprocess.run(['doas', '/usr/bin/loginctl', 'suspend'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def opportunistic_sleep_enable():
@@ -264,9 +262,11 @@ def opportunistic_sleep_wakelock_toggle():
             opportunistic_sleep_wakelock()
 
 def poweroff():
+    log("going to power off")
     subprocess.run(['doas', '/usr/bin/loginctl', 'poweroff'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def reboot():
+    log("going to reboot")
     subprocess.run(['doas', '/usr/bin/loginctl', 'reboot'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def is_screen_off():
@@ -292,6 +292,7 @@ def possibly_s2idle():
     while True:
         if is_screen_off() and not ssh_connection_active():
             s2idle_start()
+            sleep(10) # this can take a while
         sleep(3)
 
 def wlan0_modeset(mode='managed'):
