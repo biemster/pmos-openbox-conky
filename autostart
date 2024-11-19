@@ -24,6 +24,9 @@ lisgd -d /dev/input/event4 \
 # event listener
 $HOME/phone.py --eventlistener &
 
+# overcharge protection
+#$HOME/phone.py --overcharge-protection &
+
 # sleep control
 # To do autosleep, uncomment the first to lines to properly initialize it
 # Currently the --try-sleeping method decides when to sleep, and initiates it using loginctl suspend

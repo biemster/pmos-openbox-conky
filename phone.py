@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--wifi-disconnect', help='Disconnect WiFi', action='store_true')
     parser.add_argument('--wifi-off', help='Turn off WiFi', action='store_true')
     parser.add_argument('--espnow', help='Listen for ESPNOW frames on channel 1', action='store_true')
+    parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
     args = parser.parse_args()
 
     if args.eventlistener: eventlistener()
@@ -65,6 +66,7 @@ def main():
     elif args.wifi_disconnect: wifidisconnect()
     elif args.wifi_off: wifi_off()
     elif args.espnow: espnow()
+    elif args.overcharge_protection: overcharge_protection()
 
 def notification(msg):
     screen_on()
@@ -88,7 +90,7 @@ def eventlistener():
     async def handle_events(device):
         async for event in device.async_read_loop():
             try:
-                log(f'{device.path}: {evdev.categorize(event)}')
+                #log(f'{device.path}: {evdev.categorize(event)}')
                 if '(KEY_POWER), up' in str(evdev.categorize(event)):
                     powerbutton_press()
             except KeyError:
@@ -162,7 +164,7 @@ def suspend_restart_powerdown_modal():
     ttk.Button(root, text="⏾", command=suspend_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="↻", command=reboot_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="⏻", command=poweroff_clicked, style='Bold.TButton', width=2).pack()
-    ttk.Button(root, text="C", command=cancel_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="x", command=cancel_clicked, style='Bold.TButton', width=2).pack()
 
     sv_ttk.set_theme("dark")
     bStyle = ttk.Style()
@@ -347,6 +349,31 @@ def espnow():
     pf = 'type 0 subtype 0xd0 and wlan[24:4]=0x7f18fe34 and wlan[32]=221 and wlan[33:4]&0xffffff = 0x18fe34 and wlan[37]=0x4'
     with open('/tmp/espnow', 'w') as outfile:
         subprocess.run(['tcpdump', '-XX', '-i' , 'wlan0', pf], stdout=outfile, stderr=subprocess.STDOUT, text=True)
+
+def get_charge_now():
+    with open('/sys/class/power_supply/bq27411-0/charge_now', 'r') as f:
+        int(f.read())
+
+def limit_charger_current():
+    with open('/sys/class/power_supply/pmi8998-charger/current_max', 'w') as f:
+        f.write('10000') # 10 mA
+
+def resume_charger_current():
+    with open('/sys/class/power_supply/pmi8998-charger/current_max', 'w') as f:
+        f.write('1125000') # 1A
+
+BATTERY_MAX_CHARGE = 3000000 # battery is old, not 3.6 Ah but 3.0 Ah
+def overcharge_protection():
+    wait_for_70 = False # charged to above 80%, wait for it to drop below 70% to charge again
+    while True:
+        charge_now = get_charge_now()
+        if wait_for_70 and charge_now < BATTERY_MAX_CHARGE * 0.7:
+            resume_charger_current()
+            wait_for_70 = False
+        elif charge_now > BATTERY_MAX_CHARGE * 0.8:
+            limit_charger_current()
+            wait_for_70 = True
+        sleep(10)
 
 if __name__ == '__main__':
     main()
