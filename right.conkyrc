@@ -11,7 +11,7 @@ conky.config = {
 	maximum_width = 500,
 
 	use_xft = true,
-	font = 'Ubuntu:size=18',
+	font = 'Noto:size=18',
 	xftalpha = 1,
 	override_utf8_locale = true,
     
