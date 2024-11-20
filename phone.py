@@ -171,10 +171,11 @@ def suspend_restart_powerdown_modal():
     bStyle.configure('Bold.TButton', font =('Noto','72','bold'))
 
     # place on the right and close to the power button
+    ws = root.winfo_screenwidth()
+    root.geometry(f'+{ws}+0') # initially hide, update_idletasks() shows the modal before putting it in the right place
     root.update_idletasks()
     w = root.winfo_width()
     h = root.winfo_height()
-    ws = root.winfo_screenwidth()
     root.geometry(f'{w}x{h}+{ws-w}+600')
     root.mainloop()
 
