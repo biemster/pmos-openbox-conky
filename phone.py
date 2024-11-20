@@ -362,10 +362,7 @@ def espnow():
         subprocess.run(['tcpdump', '-XX', '-i' , 'wlan0', pf], stdout=outfile, stderr=subprocess.STDOUT, text=True)
 
 def enable_overcharge_protection():
-    if os.getuid() != 0:
-        log('enable_overcharge_protection should be run as root, so do what you just did with doas')
-    else:
-        subprocess.run(['doas', '/bin/chmod', '0644', '/sys/class/power_supply/pmi8998-charger/current_max'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/bin/chmod', '0644', '/sys/class/power_supply/pmi8998-charger/current_max'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def get_charge_now():
     with open('/sys/class/power_supply/bq27411-0/charge_now', 'r') as f:
