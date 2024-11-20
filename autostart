@@ -15,7 +15,7 @@ xset dpms 15 15 15
 /usr/bin/conky -c $HOME/conkies/bottom.conkyrc
 
 # gesture recognition
-lisgd -d /dev/input/event4 \
+lisgd -d /dev/input/by-path/platform-a90000.i2c-event \
 	-g "1,LR,*,*,R,$HOME/phone.py -r" \
 	-g "1,RL,*,*,R,$HOME/phone.py -l" \
 	-g "1,DU,*,*,R,$HOME/phone.py -u" \
