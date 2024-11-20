@@ -25,7 +25,8 @@ lisgd -d /dev/input/event4 \
 $HOME/phone.py --eventlistener &
 
 # overcharge protection
-#$HOME/phone.py --overcharge-protection &
+$HOME/phone.py --enable-overcharge-protection
+$HOME/phone.py --overcharge-protection &
 
 # sleep control
 # To do autosleep, uncomment the first to lines to properly initialize it

@@ -36,6 +36,8 @@ def main():
     parser.add_argument('--wifi-disconnect', help='Disconnect WiFi', action='store_true')
     parser.add_argument('--wifi-off', help='Turn off WiFi', action='store_true')
     parser.add_argument('--espnow', help='Listen for ESPNOW frames on channel 1', action='store_true')
+    parser.add_argument('--enable-overcharge-protection', help='Enable limiting charging current to 10mA when battery reached ~80%', action='store_true')
+    parser.add_argument('--charge-now', help='Get current battery charge in uA', action='store_true')
     parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
     args = parser.parse_args()
 
@@ -66,6 +68,8 @@ def main():
     elif args.wifi_disconnect: wifidisconnect()
     elif args.wifi_off: wifi_off()
     elif args.espnow: espnow()
+    elif args.enable_overcharge_protection: enable_overcharge_protection()
+    elif args.charge_now: get_charge_now()
     elif args.overcharge_protection: overcharge_protection()
 
 def notification(msg):
@@ -351,17 +355,21 @@ def espnow():
     with open('/tmp/espnow', 'w') as outfile:
         subprocess.run(['tcpdump', '-XX', '-i' , 'wlan0', pf], stdout=outfile, stderr=subprocess.STDOUT, text=True)
 
+def enable_overcharge_protection():
+    if os.getuid() != 0:
+        log('enable_overcharge_protection should be run as root, so do what you just did with doas')
+    else:
+        subprocess.run(['doas', '/bin/chmod', '0644', '/sys/class/power_supply/pmi8998-charger/current_max'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 def get_charge_now():
     with open('/sys/class/power_supply/bq27411-0/charge_now', 'r') as f:
-        int(f.read())
+        return int(f.read())
 
-def limit_charger_current():
-    with open('/sys/class/power_supply/pmi8998-charger/current_max', 'w') as f:
-        f.write('10000') # 10 mA
+def limit_charger_current(): # 100 mA
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/class/power_supply/pmi8998-charger/current_max'], text=True, input='100000', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def resume_charger_current():
-    with open('/sys/class/power_supply/pmi8998-charger/current_max', 'w') as f:
-        f.write('1125000') # 1A
+def resume_charger_current(): # 1.125A
+    subprocess.run(['doas', '/usr/bin/tee', '/sys/class/power_supply/pmi8998-charger/current_max'], text=True, input='1125000', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 BATTERY_MAX_CHARGE = 3000000 # battery is old, not 3.6 Ah but 3.0 Ah
 def overcharge_protection():
