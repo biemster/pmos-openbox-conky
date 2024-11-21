@@ -339,7 +339,7 @@ def wlan0_modeset(mode='managed'):
 def wificonnect(accesspoint):
     wifi = subprocess.check_output(['nmcli' ,'device', 'wifi']).decode().split('\n')
     if len(wifi) > 2:
-        ssid1 = wifi[1].split()
+        ssid = wifi[1].split()
         if ssid[0] != '*' or ssid[2] != accesspoint:
             wifidisconnect()
             wlan0_modeset('managed')
@@ -351,7 +351,7 @@ def wifidisconnect():
 def wifi_off():
     wifi = subprocess.check_output(['nmcli' ,'device', 'wifi']).decode().split('\n')
     if len(wifi) > 2:
-        ssid1 = wifi[1].split()
+        ssid = wifi[1].split()
         if ssid[0] == '*':
             subprocess.run(['nmcli', 'connection', 'delete', 'id', ssid[2]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
