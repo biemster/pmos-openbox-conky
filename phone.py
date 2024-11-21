@@ -391,15 +391,20 @@ def overcharge_protection():
         sleep(10)
 
 def print_initial_setup_commands():
-    print('doas rm /usr/lib/NetworkManager/dispatcher.d/50-dns-filter.sh')
-    print('doas rc-service sleep-inhibitor stop')
-    print('doas rc-update del sleep-inhibitor')
-    print('doas rc-service modemmanager start')
-    print('doas rc-update add modemmanager')
-    print('doas rc-service ntpd start')
-    print('doas rc-update add ntpd')
-    print('doas apk add python3-tkinter py3-pip font-noto')
-    print('pip install sv-ttk')
+    print('''
+doas rm /usr/lib/NetworkManager/dispatcher.d/50-dns-filter.sh
+doas rc-service sleep-inhibitor stop
+doas rc-update del sleep-inhibitor
+doas rc-service ntpd start
+doas rc-update add ntpd
+doas apk add python3-tkinter py3-pip font-noto
+pip install sv-ttk
+doas cp /etc/init.d/modemmanager .
+doas apk add modemmanager-1.22.0_p20241106151941-r1.apk
+doas mv modemmanager /etc/init.d/
+doas rc-service modemmanager start
+doas rc-update add modemmanager
+        ''')
 
 if __name__ == '__main__':
     main()
