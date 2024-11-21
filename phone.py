@@ -398,12 +398,21 @@ doas rc-update del sleep-inhibitor
 doas rc-service ntpd start
 doas rc-update add ntpd
 doas apk add python3-tkinter py3-pip font-noto
-pip install sv-ttk
+pip install sv-ttk --break-system-packages
 doas cp /etc/init.d/modemmanager .
 doas apk add modemmanager-1.22.0_p20241106151941-r1.apk
 doas mv modemmanager /etc/init.d/
 doas rc-service modemmanager start
 doas rc-update add modemmanager
+doas chown root:root 90-phone.py.conf
+doas chmod 0400 90-phone.py.conf
+doas mv 90-phone.py.conf /etc/doas.d/
+mkdir -p .config/openbox
+mv autostart .config/openbox/
+mkdir -p .config/dunst
+mv dunstrc .config/dunst/
+mkdir conkies
+mv *conkyrc conkies/
         ''')
 
 if __name__ == '__main__':
