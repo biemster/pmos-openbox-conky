@@ -42,6 +42,7 @@ def main():
     parser.add_argument('--enable-overcharge-protection', help='Enable limiting charging current to 10mA when battery reached ~80%', action='store_true')
     parser.add_argument('--charge-now', help='Get current battery charge in uA', action='store_true')
     parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
+    parser.add_argument('--print-initial-setup-commands', help='Print initial setup commands', action='store_true')
     args = parser.parse_args()
 
     if args.eventlistener: eventlistener()
@@ -77,6 +78,7 @@ def main():
     elif args.enable_overcharge_protection: enable_overcharge_protection()
     elif args.charge_now: get_charge_now()
     elif args.overcharge_protection: overcharge_protection()
+    elif args.print_initial_setup_commands: print_initial_setup_commands()
 
 def notification(msg):
     screen_on()
@@ -387,6 +389,17 @@ def overcharge_protection():
             limit_charger_current()
             wait_for_70 = True
         sleep(10)
+
+def print_initial_setup_commands():
+    print('doas rm /usr/lib/NetworkManager/dispatcher.d/50-dns-filter.sh')
+    print('doas rc-service sleep-inhibitor stop')
+    print('doas rc-update del sleep-inhibitor')
+    print('doas rc-service modemmanager start')
+    print('doas rc-update add modemmanager')
+    print('doas rc-service ntpd start')
+    print('doas rc-update add ntpd')
+    print('doas apk add python3-tkinter py3-pip font-noto')
+    print('pip install sv-ttk')
 
 if __name__ == '__main__':
     main()
