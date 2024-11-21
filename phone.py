@@ -379,9 +379,10 @@ def overcharge_protection():
     wait_for_70 = False # charged to above 80%, wait for it to drop below 70% to charge again
     while True:
         charge_now = get_charge_now()
-        if wait_for_70 and charge_now < BATTERY_MAX_CHARGE * 0.7:
-            resume_charger_current()
-            wait_for_70 = False
+        if wait_for_70:
+            if charge_now < BATTERY_MAX_CHARGE * 0.7:
+                resume_charger_current()
+                wait_for_70 = False
         elif charge_now > BATTERY_MAX_CHARGE * 0.8:
             limit_charger_current()
             wait_for_70 = True
