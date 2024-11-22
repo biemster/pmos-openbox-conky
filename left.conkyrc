@@ -55,7 +55,10 @@ ${voffset -3} $color${font Cantarell:size=60} ${time %Y}$font
 ${voffset 8}${goto 18}${color}ALARM ${color1}not set${alignr}${color}--:--
 ${voffset -2}$color2$alignr${execbar 10,500 echo 100}${voffset -2}
 #
-${voffset 8}${goto 18}${color}BATTERY ${color1}${exec cat /sys/class/power_supply/pmi8998-charger/status}${alignr}${color}${exec cat /sys/class/power_supply/bq27411-0/capacity}%
+${voffset 8}${goto 18}${color}BATTERY ${color1}${exec cat /sys/class/power_supply/pmi8998-charger/status} \
+${exec cat /sys/class/power_supply/bq27411-0/charge_now | awk '{printf "%d", $1 / 1000}'} \
+${exec cat /sys/class/power_supply/pmi8998-charger/current_max | awk '{printf "%d", $1 / 1000}'}\
+${alignr}${color}${exec cat /sys/class/power_supply/bq27411-0/capacity}%
 ${voffset -2}$color2$alignr${execbar 10,500 cat /sys/class/power_supply/bq27411-0/capacity}${voffset -2}
 #
 ${voffset 8}${goto 18}${color}IDLE ${alignr}${color}${exec xprintidle | awk '{printf "%d", $1 / 1000}'}/15
@@ -84,9 +87,11 @@ ${goto 18}$color0${top_mem name 3}$alignr$color${top_mem mem_res 3}
 ${voffset 8}${goto 18}${color}DISK${alignr}$fs_used / $fs_size
 ${voffset -2}$color2$alignr${fs_bar 10,500}${voffset -2}
 #
+${if_existing /tmp/ui_statemachine gps}\
 ${execp ./phone.py --gps | awk '{printf "${voffset 8}${goto 18}${color}GPS${alignr}${color0}utc${color}%s ${color0}acc${color}%sm\n\
 ${voffset -2}$color2$alignr${execbar 10,500 echo %d}${voffset -2}", $4, $7, (10-$7)*10}'}
 ${execp ./phone.py --gps | awk '{printf "${goto 18}$alignr${color0}view${color}%s ${color0}fix${color}%s ${color0}lat${color}%s ${color0}lon${color}%s ${color0}alt${color}%s", $2, $3, $5, $6, $8}'}
+${endif}
 #
 ${voffset 8}${goto 18}${color}NET
 ${color}Device ${alignr}${color0}$template0

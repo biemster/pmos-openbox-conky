@@ -42,7 +42,8 @@ def main():
     parser.add_argument('--wifi-off', help='Turn off WiFi', action='store_true')
     parser.add_argument('--espnow', help='Listen for ESPNOW frames on channel 1', action='store_true')
     parser.add_argument('--enable-overcharge-protection', help='Enable limiting charging current to 10mA when battery reached ~80%', action='store_true')
-    parser.add_argument('--charge-now', help='Get current battery charge in uA', action='store_true')
+    parser.add_argument('--charge-now', help='Get current battery charge in mA', action='store_true')
+    parser.add_argument('--charger-current', help='Get charger current_max in mA', action='store_true')
     parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
     parser.add_argument('--print-initial-setup-commands', help='Print initial setup commands', action='store_true')
     args = parser.parse_args()
@@ -80,7 +81,8 @@ def main():
     elif args.wifi_off: wifi_off()
     elif args.espnow: espnow()
     elif args.enable_overcharge_protection: enable_overcharge_protection()
-    elif args.charge_now: get_charge_now()
+    elif args.charge_now: print(int(get_charge_now()) // 1000)
+    elif args.charger_current: print(int(get_charger_current()) // 1000)
     elif args.overcharge_protection: overcharge_protection()
     elif args.print_initial_setup_commands: print_initial_setup_commands()
 
@@ -386,6 +388,10 @@ def enable_overcharge_protection():
 
 def get_charge_now():
     with open('/sys/class/power_supply/bq27411-0/charge_now', 'r') as f:
+        return int(f.read())
+
+def get_charger_current():
+    with open('/sys/class/power_supply/pmi8998-charger/current_max', 'r') as f:
         return int(f.read())
 
 def limit_charger_current(): # 100 mA
