@@ -81,8 +81,8 @@ def main():
     elif args.wifi_off: wifi_off()
     elif args.espnow: espnow()
     elif args.enable_overcharge_protection: enable_overcharge_protection()
-    elif args.charge_now: print(int(get_charge_now()) // 1000)
-    elif args.charger_current: print(int(get_charger_current()) // 1000)
+    elif args.charge_now: print(get_charge_now() // 1000)
+    elif args.charger_current: print(get_charger_current() // 1000)
     elif args.overcharge_protection: overcharge_protection()
     elif args.print_initial_setup_commands: print_initial_setup_commands()
 
