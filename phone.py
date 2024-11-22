@@ -17,6 +17,7 @@ def main():
     parser.add_argument('-d', '--swipedown', help='Execute swipe down action', action='store_true')
     parser.add_argument('--ui-full', help='Show full conky UI on desktop', action='store_true')
     parser.add_argument('--ui-minimal', help='Show minimal conky UI on desktop', action='store_true')
+    parser.add_argument('--ui-restart', help='Restart UI by killing X', action='store_true')
     parser.add_argument('--rumble', help='Rumble for <RUMBLE> milliseconds', type=int)
     parser.add_argument('--screen-on', help='Turn on the screen', action='store_true')
     parser.add_argument('--notification', help='Display notification')
@@ -54,6 +55,7 @@ def main():
     elif args.swipedown: swipedown()
     elif args.ui_full: ui_full()
     elif args.ui_minimal: ui_minimal()
+    elif args.ui_restart: ui_restart()
     elif args.rumble: rumble(args.rumble)
     elif args.screen_on: screen_on()
     elif args.notification: notification(args.notification)
@@ -159,6 +161,12 @@ def ui_minimal():
     if os.getuid() == 0:
         doas_10000 = ['doas', '-u', '10000']
     subprocess.run(doas_10000 + ['sed', '-i', 's/full/minimal/', '/tmp/ui_statemachine'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def ui_restart():
+    doas_10000 = []
+    if os.getuid() == 0:
+        doas_10000 = ['doas', '-u', '10000']
+    subprocess.run(doas_10000 + ['killall', 'openbox', 'startx'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def suspend_restart_powerdown_modal():
     import tkinter
