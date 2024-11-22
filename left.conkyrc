@@ -87,11 +87,9 @@ ${goto 18}$color0${top_mem name 3}$alignr$color${top_mem mem_res 3}
 ${voffset 8}${goto 18}${color}DISK${alignr}$fs_used / $fs_size
 ${voffset -2}$color2$alignr${fs_bar 10,500}${voffset -2}
 #
-${if_existing /tmp/ui_statemachine gps}\
-${execp ./phone.py --gps | awk '{printf "${voffset 8}${goto 18}${color}GPS${alignr}${color0}utc${color}%s ${color0}acc${color}%sm\n\
-${voffset -2}$color2$alignr${execbar 10,500 echo %d}${voffset -2}", $4, $7, (10-$7)*10}'}
-${execp ./phone.py --gps | awk '{printf "${goto 18}$alignr${color0}view${color}%s ${color0}fix${color}%s ${color0}lat${color}%s ${color0}lon${color}%s ${color0}alt${color}%s", $2, $3, $5, $6, $8}'}
-${endif}
+#${execp ./phone.py --gps | awk '{printf "${voffset 8}${goto 18}${color}GPS${alignr}${color0}utc${color}%s ${color0}acc${color}%sm\n\
+#${voffset -2}$color2$alignr${execbar 10,500 echo %d}${voffset -2}", $4, $7, (10-$7)*10}'}
+#${execp ./phone.py --gps | awk '{printf "${goto 18}$alignr${color0}view${color}%s ${color0}fix${color}%s ${color0}lat${color}%s ${color0}lon${color}%s ${color0}alt${color}%s", $2, $3, $5, $6, $8}'}
 #
 ${voffset 8}${goto 18}${color}NET
 ${color}Device ${alignr}${color0}$template0
