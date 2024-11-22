@@ -10,6 +10,7 @@ os.putenv('DISPLAY', ':0')
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--eventlistener', help='Listen for events from /dev/input/* and sensors', action='store_true')
+    parser.add_argument('--gestures', help='Listen for touch gestures', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
     parser.add_argument('-u', '--swipeup', help='Execute swipe up action', action='store_true')
@@ -46,6 +47,7 @@ def main():
     args = parser.parse_args()
 
     if args.eventlistener: eventlistener()
+    elif args.gestures: gestures()
     elif args.swipeleft: swipeleft()
     elif args.swiperight: swiperight()
     elif args.swipeup: swipedup()
@@ -113,6 +115,14 @@ def eventlistener():
 
     loop = asyncio.get_event_loop()
     loop.run_forever()
+
+def gestures():
+    g = ['-g', '1,LR,*,*,R,$HOME/phone.py -r']
+    g += ['-g', '1,RL,*,*,R,$HOME/phone.py -l']
+    g += ['-g', '1,DU,*,*,R,$HOME/phone.py -u']
+    g += ['-g', '1,UD,*,*,R,$HOME/phone.py -d']
+    while True:
+        subprocess.run(['lisgd', '-d', '/dev/input/by-path/platform-a90000.i2c-event'] + g, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def swipeleft():
     notification('swiped left')
