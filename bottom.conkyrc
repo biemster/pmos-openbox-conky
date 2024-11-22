@@ -47,6 +47,6 @@ conky.text = [[
 ${if_existing /tmp/ui_statemachine full}
 ${voffset -20}${color}${hr}
 LOGS
-${color0}${exec tail -25 /tmp/logging}\
+${color0}${exec tail -15 /tmp/logging}\
 ${endif}
 ]];
