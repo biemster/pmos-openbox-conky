@@ -9,7 +9,7 @@ os.putenv('DISPLAY', ':0')
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--eventlistener', help='Listen for events from /dev/input/* and sensors', action='store_true')
+    parser.add_argument('-e', '--eventlistener', help='Listen for events from /dev/input/* and dbus (sensors,suspend/resume)', action='store_true')
     parser.add_argument('--gestures', help='Listen for touch gestures', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
@@ -99,8 +99,11 @@ def log(msg):
     print(msg)
 
 def eventlistener():
-    import evdev
     import asyncio
+    import evdev
+    from dbus_next import BusType
+    from dbus_next.aio import MessageBus
+
     tristate = evdev.InputDevice('/dev/input/by-path/platform-alert-slider-event')
     vol = evdev.InputDevice('/dev/input/by-path/platform-gpio-keys-event')
     pwr = evdev.InputDevice('/dev/input/by-path/platform-c440000.spmi-platform-c440000.spmi:pmic@0:pon@800:pwrkey-event') # acpid will also react on the power button
@@ -109,13 +112,27 @@ def eventlistener():
         async for event in device.async_read_loop():
             try:
                 #log(f'{device.path}: {evdev.categorize(event)}')
-                if '(KEY_POWER), up' in str(evdev.categorize(event)):
-                    powerbutton_press()
+                if '(KEY_POWER), down' in str(evdev.categorize(event)):
+                    powerbutton_press() # this will block the whole event listener!
             except KeyError:
                 log(f'{device.path}: {event}')
 
     for device in tristate, vol, pwr:
         asyncio.ensure_future(handle_events(device))
+
+    async def handle_dbus_PrepareForSleep():
+        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+
+        def handle_sleep_signal(msg):
+            if len(msg.body):
+                if not msg.body[0]:
+                    perform_wakeup_tasks()
+
+        bus._add_match_rule("type='signal',member='PrepareForSleep'")
+        bus.add_message_handler(handle_sleep_signal)
+        await bus.wait_for_disconnect()
+
+    asyncio.ensure_future(handle_dbus_PrepareForSleep())
 
     loop = asyncio.get_event_loop()
     loop.run_forever()
@@ -132,7 +149,7 @@ def swipeleft():
     notification('swiped left')
 
 def swiperight():
-    notification('swiped right')
+    ui_full()
 
 def swipedup():
     notification('swiped up')
@@ -272,9 +289,36 @@ def disable_modem_wakeirq():
     modem_wakeirq = '/sys/bus/rpmsg/devices/4080000.remoteproc:glink-edge.IPCRTR.-1.-1/power/wakeup'
     subprocess.run(['doas', '/usr/bin/tee', modem_wakeirq], text=True, input='disabled', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+WAKEIRQ_COUNTS = {}
+def store_wakeirq_counts():
+    import glob
+    for wakeup in glob.glob('/sys/class/wakeup/wakeup*/'):
+        name = open(wakeup + 'name').read()[:-1]
+        count = int(open(wakeup + 'event_count').read())
+        WAKEIRQ_COUNTS[name] = count
+
+def compare_wakeirq_counts():
+    import glob
+    diffs = {}
+    for wakeup in glob.glob('/sys/class/wakeup/wakeup*/'):
+        name = open(wakeup + 'name').read()[:-1]
+        count = int(open(wakeup + 'event_count').read())
+        diff = count - WAKEIRQ_COUNTS[name]
+        if diff:
+            diffs[name] = diff
+    return diffs
+
 def s2idle_start():
     log("going to suspend")
+    ui_minimal()
+    store_wakeirq_counts()
     subprocess.run(['doas', '/usr/bin/loginctl', 'suspend'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def perform_wakeup_tasks():
+    log('waking up')
+    screen_on()
+    wakeirq_diffs = compare_wakeirq_counts()
+    log(f'wakeirq diffs (not reliable): {wakeirq_diffs}')
 
 def opportunistic_sleep_enable():
     subprocess.run(['doas', '/usr/bin/tee', '/sys/power/autosleep'], text=True, input='mem', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
