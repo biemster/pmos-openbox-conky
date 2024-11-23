@@ -124,6 +124,7 @@ def key_listener():
     loop.run_forever()
 
 def dbus_listener():
+    import asyncio
     from dbus_next import BusType
     from dbus_next.aio import MessageBus
 
