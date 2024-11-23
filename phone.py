@@ -9,7 +9,8 @@ os.putenv('DISPLAY', ':0')
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', '--eventlistener', help='Listen for events from /dev/input/* and dbus (sensors,suspend/resume)', action='store_true')
+    parser.add_argument('--key-listener', help='Listen for key events from /dev/input/*', action='store_true')
+    parser.add_argument('--dbus-listener', help='Listen for dbus (sensors,suspend/resume) events', action='store_true')
     parser.add_argument('--gestures', help='Listen for touch gestures', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
@@ -48,7 +49,8 @@ def main():
     parser.add_argument('--print-initial-setup-commands', help='Print initial setup commands', action='store_true')
     args = parser.parse_args()
 
-    if args.eventlistener: eventlistener()
+    if args.key_listener: key_listener()
+    elif args.dbus_listener: dbus_listener()
     elif args.gestures: gestures()
     elif args.swipeleft: swipeleft()
     elif args.swiperight: swiperight()
@@ -98,11 +100,9 @@ def log(msg):
         f.write(f'{datetime.now()} {msg}\n')
     print(msg)
 
-def eventlistener():
+def key_listener():
     import asyncio
     import evdev
-    from dbus_next import BusType
-    from dbus_next.aio import MessageBus
 
     tristate = evdev.InputDevice('/dev/input/by-path/platform-alert-slider-event')
     vol = evdev.InputDevice('/dev/input/by-path/platform-gpio-keys-event')
@@ -119,6 +119,13 @@ def eventlistener():
 
     for device in tristate, vol, pwr:
         asyncio.ensure_future(handle_events(device))
+
+    loop = asyncio.get_event_loop()
+    loop.run_forever()
+
+def dbus_listener():
+    from dbus_next import BusType
+    from dbus_next.aio import MessageBus
 
     async def handle_dbus_PrepareForSleep():
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()

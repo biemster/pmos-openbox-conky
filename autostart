@@ -17,8 +17,9 @@ xset dpms 15 15 15
 # gesture recognition
 $HOME/phone.py --gestures &
 
-# event listener
-$HOME/phone.py --eventlistener &
+# listeners
+$HOME/phone.py --key-listener &
+$HOME/phone.py --dbus-listener &
 
 # overcharge protection
 $HOME/phone.py --enable-overcharge-protection
