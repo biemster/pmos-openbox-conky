@@ -104,6 +104,9 @@ def key_listener():
     import asyncio
     import evdev
 
+    loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+
     tristate = evdev.InputDevice('/dev/input/by-path/platform-alert-slider-event')
     vol = evdev.InputDevice('/dev/input/by-path/platform-gpio-keys-event')
     pwr = evdev.InputDevice('/dev/input/by-path/platform-c440000.spmi-platform-c440000.spmi:pmic@0:pon@800:pwrkey-event') # acpid will also react on the power button
@@ -120,13 +123,15 @@ def key_listener():
     for device in tristate, vol, pwr:
         asyncio.ensure_future(handle_events(device))
 
-    loop = asyncio.get_event_loop()
     loop.run_forever()
 
 def dbus_listener():
     import asyncio
     from dbus_next import BusType
     from dbus_next.aio import MessageBus
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     async def handle_dbus_PrepareForSleep():
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
@@ -142,7 +147,6 @@ def dbus_listener():
 
     asyncio.ensure_future(handle_dbus_PrepareForSleep())
 
-    loop = asyncio.get_event_loop()
     loop.run_forever()
 
 def gestures():
