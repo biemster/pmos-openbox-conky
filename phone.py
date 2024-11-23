@@ -319,7 +319,7 @@ def s2idle_start():
     log("going to suspend")
     ui_minimal()
     store_wakeirq_counts()
-    subprocess.run(['doas', '/usr/bin/loginctl', 'suspend'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['doas', '/usr/bin/loginctl', '--ignore-inhibitors', 'suspend'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def perform_wakeup_tasks():
     log('waking up')
