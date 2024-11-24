@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--charge-now', help='Get current battery charge in mA', action='store_true')
     parser.add_argument('--charger-current', help='Get charger current_max in mA', action='store_true')
     parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
+    parser.add_argument('--findmy', help='Set BLE advertisement to join the Apple FindMy network')
     parser.add_argument('--print-initial-setup-commands', help='Print initial setup commands', action='store_true')
     args = parser.parse_args()
 
@@ -86,6 +87,7 @@ def main():
     elif args.charge_now: print(get_charge_now() // 1000)
     elif args.charger_current: print(get_charger_current() // 1000)
     elif args.overcharge_protection: overcharge_protection()
+    elif args.findmy: findmy(args.findmy)
     elif args.print_initial_setup_commands: print_initial_setup_commands()
 
 def notification(msg):
@@ -469,6 +471,28 @@ def overcharge_protection():
             limit_charger_current()
             wait_for_70 = True
         sleep(10)
+
+def findmy(adv_key):
+    public_key = list(b64decode(adv_key))
+    ble_mac = [public_key[0] | 0xc0] + public_key[1:6]
+    adv = [
+        0x1e, # Length (30)
+        0xff, # Manufacturer Specific Data (type 0xff)
+        0x4c, 0x00, # Company ID (Apple)
+        0x12, 0x19, # Offline Finding type and length
+        0x00, # State
+    ] + public_key[-22:] + [
+        0x00, # First two bits
+        0x00, # Hint (0x00)
+    ]
+
+    subprocess.run(['btmgmt', '-i', 'hci0', 'power', 'off'])
+    subprocess.run(['btmgmt', '-i', 'hci0', 'le', 'on'])
+    subprocess.run(['btmgmt', '-i', 'hci0', 'connectable', 'on']) # this is needed to set addr, but we don't want it
+    subprocess.run(['btmgmt', '-i', 'hci0', 'public-addr', ":".join(hex(c)[2:].zfill(2) for c in ble_mac)])
+    subprocess.run(['btmgmt', '-i', 'hci0', 'power', 'on'])
+    subprocess.run(['btmgmt', '-i', 'hci0', 'clr-adv'])
+    subprocess.run(['btmgmt', '-i', 'hci0', 'add-adv', '-d', bytes(adv).hex(), '1'])
 
 def print_initial_setup_commands():
     print('''

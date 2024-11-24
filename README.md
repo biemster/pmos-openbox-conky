@@ -7,7 +7,7 @@ Development is done on a OnePlus 6T in the `edge` release, so a couple things wi
 be easily adaptable to other platforms.
 Most of the following extra packages are needed to run everything:
 ```
-vim,git,conky,python3,python3-tkinter,py3-pip,py3-evdev,py3-evdev-pyc,py3-dbus-next,dbus-x11,modemmanager,iw,feh,lisgd,tcpdump,libc6-compat,lm-sensors,iio-sensor-proxy,xset,xwd,xprintidle,font-noto,curl,nmap,dunst,dtc,scapy,qcom-diag
+vim,git,conky,python3,python3-tkinter,py3-pip,py3-evdev,py3-evdev-pyc,py3-dbus-next,dbus-x11,modemmanager,bluez,iw,feh,lisgd,tcpdump,libc6-compat,lm-sensors,iio-sensor-proxy,xset,xwd,xprintidle,font-noto,curl,nmap,dunst,dtc,scapy,qcom-diag
 ```
 
 ## Targets
