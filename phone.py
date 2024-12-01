@@ -11,6 +11,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--key-listener', help='Listen for key events from /dev/input/*', action='store_true')
     parser.add_argument('--dbus-suspend-listener', help='Listen for dbus suspend/resume events', action='store_true')
+    parser.add_argument('--dbus-call-listener', help='Listen for dbus Call (Modem.Voice) events', action='store_true')
+    parser.add_argument('--dbus-sms-listener', help='Listen for dbus SMS (Modem.Messaging) events', action='store_true')
     parser.add_argument('--gestures', help='Listen for touch gestures', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
@@ -53,6 +55,8 @@ def main():
 
     if args.key_listener: key_listener()
     elif args.dbus_suspend_listener: dbus_suspend_listener()
+    elif args.dbus_call_listener: dbus_call_listener()
+    elif args.dbus_sms_listener: dbus_sms_listener()
     elif args.gestures: gestures()
     elif args.swipeleft: swipeleft()
     elif args.swiperight: swiperight()
@@ -159,6 +163,58 @@ def dbus_suspend_listener():
 
     loop.run_forever()
 
+def dbus_call_listener():
+    import asyncio
+    import threading
+    from dbus_next import BusType
+    from dbus_next.aio import MessageBus
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    async def handle_dbus_CallAdded():
+        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+
+        def handle_incoming_call_signal(msg):
+            if len(msg.body):
+                wakeup_tasks_thread = threading.Thread(target=handle_incoming_call)
+                wakeup_tasks_thread.daemon = True
+                wakeup_tasks_thread.start()
+
+        bus._add_match_rule("type='signal',interface=org.freedesktop.ModemManager1.Modem.Voice,member='CallAdded'")
+        bus.add_message_handler(handle_incoming_call_signal)
+        await bus.wait_for_disconnect()
+
+    asyncio.ensure_future(handle_dbus_CallAdded())
+
+    loop.run_forever()
+
+def dbus_sms_listener():
+    import asyncio
+    import threading
+    from dbus_next import BusType
+    from dbus_next.aio import MessageBus
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    async def handle_dbus_MessageAdded():
+        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+
+        def handle_sms_signal(msg):
+            if len(msg.body):
+                wakeup_tasks_thread = threading.Thread(target=retrieve_sms_from_modem)
+                wakeup_tasks_thread.daemon = True
+                wakeup_tasks_thread.start()
+
+        bus._add_match_rule("type='signal',interface=org.freedesktop.ModemManager1.Modem.Messaging,member='Added'")
+        bus.add_message_handler(handle_sms_signal)
+        await bus.wait_for_disconnect()
+
+    asyncio.ensure_future(handle_dbus_MessageAdded())
+
+    loop.run_forever()
+
 def gestures():
     g = ['-g', '1,LR,*,*,R,$HOME/phone.py -r']
     g += ['-g', '1,RL,*,*,R,$HOME/phone.py -l']
@@ -259,6 +315,12 @@ def powerbutton_modal():
     h = root.winfo_height()
     root.geometry(f'{w}x{h}+{ws-w}+600')
     root.mainloop()
+
+def handle_incoming_call():
+    notification('CALL!')
+
+def retrieve_sms_from_modem():
+    notification('New SMS')
 
 def gps_enable():
     for gps_action in ['--location-enable-gps-raw', '--location-enable-gps-nmea', '--location-set-gps-refresh-rate=1']:
