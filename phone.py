@@ -189,7 +189,7 @@ def wakeup_from_modem():
     screen_on()
 
 def powerbutton_press():
-    suspend_restart_powerdown_modal()
+    powerbutton_modal()
 
 def ui_full():
     doas_10000 = []
@@ -209,7 +209,7 @@ def ui_restart():
         doas_10000 = ['doas', '-u', '10000']
     subprocess.run(doas_10000 + ['killall', 'openbox', 'startx'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def suspend_restart_powerdown_modal():
+def powerbutton_modal():
     import tkinter
     from tkinter import ttk
     import sv_ttk
@@ -229,12 +229,28 @@ def suspend_restart_powerdown_modal():
         poweroff()
         root.destroy()
 
+    def browser_clicked():
+        root.destroy()
+
+    def messaging_clicked():
+        root.destroy()
+
+    def phone_clicked():
+        root.destroy()
+
+    def assistant_clicked():
+        root.destroy()
+
     def cancel_clicked():
         root.destroy()
 
     ttk.Button(root, text="⏾", command=suspend_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="↻", command=reboot_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="⏻", command=poweroff_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="☷", command=browser_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="🗪", command=messaging_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="☎", command=phone_clicked, style='Bold.TButton', width=2).pack()
+    ttk.Button(root, text="Ai", command=assistant_clicked, style='Bold.TButton', width=2).pack()
     ttk.Button(root, text="x", command=cancel_clicked, style='Bold.TButton', width=2).pack()
 
     sv_ttk.set_theme("dark")
