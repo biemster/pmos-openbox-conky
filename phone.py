@@ -10,7 +10,7 @@ os.putenv('DISPLAY', ':0')
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--key-listener', help='Listen for key events from /dev/input/*', action='store_true')
-    parser.add_argument('--dbus-listener', help='Listen for dbus (sensors,suspend/resume) events', action='store_true')
+    parser.add_argument('--dbus-suspend-listener', help='Listen for dbus suspend/resume events', action='store_true')
     parser.add_argument('--gestures', help='Listen for touch gestures', action='store_true')
     parser.add_argument('-l', '--swipeleft', help='Execute swipe left action', action='store_true')
     parser.add_argument('-r', '--swiperight', help='Execute swipe right action', action='store_true')
@@ -47,11 +47,12 @@ def main():
     parser.add_argument('--charger-current', help='Get charger current_max in mA', action='store_true')
     parser.add_argument('--overcharge-protection', help='Limit charging current to 10mA when battery reached ~80%', action='store_true')
     parser.add_argument('--findmy', help='Set BLE advertisement to join the Apple FindMy network')
+    parser.add_argument('--findmy-off', help='Turn off Apple FindMy network BLE adverstisement')
     parser.add_argument('--print-initial-setup-commands', help='Print initial setup commands', action='store_true')
     args = parser.parse_args()
 
     if args.key_listener: key_listener()
-    elif args.dbus_listener: dbus_listener()
+    elif args.dbus_suspend_listener: dbus_suspend_listener()
     elif args.gestures: gestures()
     elif args.swipeleft: swipeleft()
     elif args.swiperight: swiperight()
@@ -88,6 +89,7 @@ def main():
     elif args.charger_current: print(get_charger_current() // 1000)
     elif args.overcharge_protection: overcharge_protection()
     elif args.findmy: findmy(args.findmy)
+    elif args.findmy_off: findmy_off()
     elif args.print_initial_setup_commands: print_initial_setup_commands()
 
 def notification(msg):
@@ -104,6 +106,7 @@ def log(msg):
 
 def key_listener():
     import asyncio
+    import threading
     import evdev
 
     loop = asyncio.get_event_loop()
@@ -118,7 +121,9 @@ def key_listener():
             try:
                 #log(f'{device.path}: {evdev.categorize(event)}')
                 if '(KEY_POWER), down' in str(evdev.categorize(event)):
-                    powerbutton_press() # this will block the whole event listener!
+                    powerbutton_modal_thread = threading.Thread(target=powerbutton_press)
+                    powerbutton_modal_thread.daemon = True
+                    powerbutton_modal_thread.start()
             except KeyError:
                 log(f'{device.path}: {event}')
 
@@ -127,8 +132,9 @@ def key_listener():
 
     loop.run_forever()
 
-def dbus_listener():
+def dbus_suspend_listener():
     import asyncio
+    import threading
     from dbus_next import BusType
     from dbus_next.aio import MessageBus
 
@@ -141,7 +147,9 @@ def dbus_listener():
         def handle_sleep_signal(msg):
             if len(msg.body):
                 if not msg.body[0]:
-                    perform_wakeup_tasks()
+                    wakeup_tasks_thread = threading.Thread(target=perform_wakeup_tasks)
+                    wakeup_tasks_thread.daemon = True
+                    wakeup_tasks_thread.start()
 
         bus._add_match_rule("type='signal',member='PrepareForSleep'")
         bus.add_message_handler(handle_sleep_signal)
@@ -473,6 +481,10 @@ def overcharge_protection():
         sleep(10)
 
 def findmy(adv_key):
+    if os.getuid() != 0:
+        log('findmy should be run as root, so do what you just did with doas')
+        return
+
     public_key = list(b64decode(adv_key))
     ble_mac = [public_key[0] | 0xc0] + public_key[1:6]
     adv = [
@@ -486,13 +498,20 @@ def findmy(adv_key):
         0x00, # Hint (0x00)
     ]
 
-    subprocess.run(['btmgmt', '-i', 'hci0', 'power', 'off'])
-    subprocess.run(['btmgmt', '-i', 'hci0', 'le', 'on'])
-    subprocess.run(['btmgmt', '-i', 'hci0', 'connectable', 'on']) # this is needed to set addr, but we don't want it
-    subprocess.run(['btmgmt', '-i', 'hci0', 'public-addr', ":".join(hex(c)[2:].zfill(2) for c in ble_mac)])
-    subprocess.run(['btmgmt', '-i', 'hci0', 'power', 'on'])
-    subprocess.run(['btmgmt', '-i', 'hci0', 'clr-adv'])
-    subprocess.run(['btmgmt', '-i', 'hci0', 'add-adv', '-d', bytes(adv).hex(), '1'])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'power', 'off'])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'le', 'on'])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'connectable', 'on']) # this is needed to set addr, but we don't want it
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'public-addr', ":".join(hex(c)[2:].zfill(2) for c in ble_mac)])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'power', 'on'])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'clr-adv'])
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'add-adv', '-d', bytes(adv).hex(), '1'])
+
+def findmy_off(adv_key):
+    if os.getuid() != 0:
+        log('findmy-off should be run as root, so do what you just did with doas')
+        return
+
+    subprocess.run(['/usr/bin/btmgmt', '-i', 'hci0', 'clr-adv'])
 
 def print_initial_setup_commands():
     print('''
