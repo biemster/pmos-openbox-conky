@@ -182,12 +182,6 @@ def swipedown():
 def rumble(millis):
     log(f'trying to rumble {millis}ms')
 
-def wakeup_from_powerbutton():
-    screen_on()
-
-def wakeup_from_modem():
-    screen_on()
-
 def powerbutton_press():
     powerbutton_modal()
 
