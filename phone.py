@@ -553,6 +553,7 @@ def overcharge_protection():
         sleep(10)
 
 def findmy(adv_key):
+    from base64 import b64decode
     if os.getuid() != 0:
         log('findmy should be run as root, so do what you just did with doas')
         return
@@ -592,7 +593,6 @@ doas rc-service sleep-inhibitor stop
 doas rc-update del sleep-inhibitor
 doas rc-service ntpd start
 doas rc-update add ntpd
-doas apk add python3-tkinter py3-pip font-noto
 pip install sv-ttk --break-system-packages
 doas cp /etc/init.d/modemmanager .
 doas apk add modemmanager-1.22.0_p20241106151941-r1.apk
